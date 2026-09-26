@@ -1,0 +1,15 @@
+{
+    "id": "{B318A18C-2043-4DEE-828B-56D406215826}",
+    "name": "UniFiDoor",
+    "type": 3,
+    "vendor": "Ubiquiti",
+    "aliases": [
+        "UniFi Door",
+        "UniFi G6 Entry",
+        "UniFi Access Tür"
+    ],
+    "parentRequirements": [],
+    "childRequirements": [],
+    "implemented": [],
+    "prefix": "UFD"
+}

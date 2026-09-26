@@ -1,0 +1,134 @@
+{
+    "elements": [
+        {
+            "type": "ExpansionPanel",
+            "caption": "Verbindung zur UniFi-Konsole",
+            "expanded": true,
+            "items": [
+                {
+                    "type": "ValidationTextBox",
+                    "name": "Host",
+                    "caption": "IP-Adresse der Konsole",
+                    "validate": "^$|^[0-9a-zA-Z\\.\\-]+$"
+                },
+                {
+                    "type": "NumberSpinner",
+                    "name": "AccessPort",
+                    "caption": "Port der Access-API",
+                    "minimum": 1,
+                    "maximum": 65535
+                },
+                {
+                    "type": "PasswordTextBox",
+                    "name": "AccessToken",
+                    "caption": "API-Token"
+                },
+                {
+                    "type": "Label",
+                    "caption": "Den Token in der Access-Applikation unter Einstellungen → Allgemein → API-Token erzeugen. Nicht über die Integrations-Seite der Konsole — die dortigen Token gehören zu Protect."
+                }
+            ]
+        },
+        {
+            "type": "ExpansionPanel",
+            "caption": "Tür",
+            "expanded": true,
+            "items": [
+                {
+                    "type": "ValidationTextBox",
+                    "name": "DoorID",
+                    "caption": "Door-ID"
+                },
+                {
+                    "type": "Button",
+                    "caption": "Verfügbare Türen auflisten",
+                    "onClick": "echo UFD_ListDoors($id);"
+                }
+            ]
+        },
+        {
+            "type": "ExpansionPanel",
+            "caption": "Kamera",
+            "expanded": true,
+            "items": [
+                {
+                    "type": "ValidationTextBox",
+                    "name": "SnapshotURL",
+                    "caption": "Snapshot-URL",
+                    "width": "600px"
+                },
+                {
+                    "type": "Label",
+                    "caption": "Bei aktiviertem anonymem Snapshot: http://<IP-der-G6>/snap.jpeg"
+                },
+                {
+                    "type": "ValidationTextBox",
+                    "name": "StreamURL",
+                    "caption": "Stream-URL (HLS/WebRTC via go2rtc)",
+                    "width": "600px"
+                },
+                {
+                    "type": "Label",
+                    "caption": "Optional. RTSP läuft nicht im Browser — hier die vom Restreamer bereitgestellte HLS- oder WebRTC-Adresse eintragen."
+                }
+            ]
+        },
+        {
+            "type": "ExpansionPanel",
+            "caption": "Klingeln",
+            "expanded": true,
+            "items": [
+                {
+                    "type": "NumberSpinner",
+                    "name": "RingResetSeconds",
+                    "caption": "Klingel-Status zurücksetzen nach (Sekunden)",
+                    "minimum": 0,
+                    "maximum": 300
+                },
+                {
+                    "type": "SelectInstance",
+                    "name": "VisuInstanceID",
+                    "caption": "Visualisierungs-Instanz für Push"
+                },
+                {
+                    "type": "SelectObject",
+                    "name": "NotifyTargetID",
+                    "caption": "Sprungziel beim Antippen der Push-Meldung"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "type": "Button",
+            "caption": "Tür öffnen (Test)",
+            "onClick": "UFD_Unlock($id);"
+        },
+        {
+            "type": "Button",
+            "caption": "Snapshot aktualisieren",
+            "onClick": "UFD_RefreshSnapshot($id);"
+        },
+        {
+            "type": "Label",
+            "caption": "Webhook-Adresse für den Protect Alarm Manager:"
+        },
+        {
+            "type": "Button",
+            "caption": "Webhook-URL anzeigen",
+            "onClick": "echo 'http://<Symcon-IP>:3777' . UFD_GetWebhookURL($id);"
+        }
+    ],
+    "status": [
+        {
+            "code": 102,
+            "icon": "active",
+            "caption": "Aktiv"
+        },
+        {
+            "code": 104,
+            "icon": "inactive",
+            "caption": "Konfiguration unvollständig — Host und API-Token werden benötigt"
+        }
+    ]
+}
