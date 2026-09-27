@@ -354,6 +354,7 @@ class UniFiDoor extends IPSModule
     {
         $ids = IPS_GetInstanceListByModuleID('{015A6EB8-D6E5-4B93-B496-0D3F77AE9FE1}');
         if (count($ids) === 0) {
+            $this->LogMessage('Keine WebHook-Control-Instanz gefunden — Klingel-Webhook kann nicht registriert werden. Bitte einmalig eine WebHook-Control-Instanz anlegen.', KL_WARNING);
             return;
         }
 
