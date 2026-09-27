@@ -44,6 +44,7 @@ class UniFiDoor extends IPSModule
         $this->EnableAction('Unlock');
 
         $this->RegisterMediaSnapshot();
+        $this->RegisterMediaStream();
 
         // Timer zum Zurücksetzen des Klingel-Status
         $this->RegisterTimer('ResetRing', 0, 'UFD_ResetRing($_IPS[\'TARGET\']);');
@@ -58,6 +59,7 @@ class UniFiDoor extends IPSModule
 
         $this->RegisterHook(self::WEBHOOK_PREFIX . '/' . $this->InstanceID);
         $this->RegisterMediaSnapshot();
+        $this->RegisterMediaStream();
 
         $liveInterval = $this->ReadPropertyInteger('LiveImageIntervalSeconds');
         $this->SetTimerInterval('RefreshLiveImage', $liveInterval > 0 ? $liveInterval * 1000 : 0);
@@ -91,8 +93,8 @@ class UniFiDoor extends IPSModule
         $doorID   = $this->ReadPropertyString('DoorID');
         $cameraID = $this->ReadPropertyString('CameraID');
 
-        $doorOptions   = $doorID !== '' ? $this->ResolveDoorOption($doorID) : null;
-        $cameraOptions = $cameraID !== '' ? $this->ResolveCameraOption($cameraID) : null;
+        $door   = $doorID !== '' ? $this->ResolveDoorOption($doorID) : null;
+        $camera = $cameraID !== '' ? $this->ResolveCameraOption($cameraID) : null;
 
         foreach ($form['elements'] as &$panel) {
             if (!isset($panel['items'])) {
@@ -100,11 +102,17 @@ class UniFiDoor extends IPSModule
             }
             foreach ($panel['items'] as &$item) {
                 $name = $item['name'] ?? '';
-                if ($name === 'DoorID' && $doorOptions !== null) {
-                    $item['options'] = $doorOptions;
+                if ($name === 'DoorID' && $door !== null) {
+                    $item['options'] = $door['options'];
                 }
-                if ($name === 'CameraID' && $cameraOptions !== null) {
-                    $item['options'] = $cameraOptions;
+                if ($name === 'DoorListStatus' && $door !== null) {
+                    $item['caption'] = $door['status'];
+                }
+                if ($name === 'CameraID' && $camera !== null) {
+                    $item['options'] = $camera['options'];
+                }
+                if ($name === 'CameraListStatus' && $camera !== null) {
+                    $item['caption'] = $camera['status'];
                 }
             }
             unset($item);
@@ -115,7 +123,7 @@ class UniFiDoor extends IPSModule
     }
 
     /**
-     * @return array{0: array{caption: string, value: string}}
+     * @return array{options: array{0: array{caption: string, value: string}}, status: string}
      */
     private function ResolveDoorOption(string $doorID): array
     {
@@ -123,38 +131,50 @@ class UniFiDoor extends IPSModule
         if ($result !== false) {
             foreach (($result['data'] ?? []) as $door) {
                 if (($door['id'] ?? '') === $doorID) {
-                    return [[
-                        'caption' => sprintf('%s (%s)', $door['name'] ?? '?', $door['full_name'] ?? '?'),
-                        'value'   => $doorID,
-                    ]];
+                    return [
+                        'options' => [[
+                            'caption' => sprintf('%s (%s)', $door['name'] ?? '?', $door['full_name'] ?? '?'),
+                            'value'   => $doorID,
+                        ]],
+                        'status' => 'Gespeicherte Tür erkannt: ' . ($door['name'] ?? '?'),
+                    ];
                 }
             }
         }
 
-        return [[
-            'caption' => 'Gespeicherte Door-ID (Name unbekannt — „Verfügbare Türen auflisten\" klicken zum Prüfen)',
-            'value'   => $doorID,
-        ]];
+        return [
+            'options' => [[
+                'caption' => 'Gespeicherte Door-ID (Name unbekannt — „Verfügbare Türen auflisten\" klicken zum Prüfen)',
+                'value'   => $doorID,
+            ]],
+            'status' => 'Gespeicherte Door-ID konnte gerade nicht aufgelöst werden (Verbindung prüfen).',
+        ];
     }
 
     /**
-     * @return array{0: array{caption: string, value: string}}
+     * @return array{options: array{0: array{caption: string, value: string}}, status: string}
      */
     private function ResolveCameraOption(string $cameraID): array
     {
         $camera = $this->ProtectApiRequest('GET', "/v1/cameras/{$cameraID}");
         if ($camera !== false) {
             $hasSpeaker = $camera['featureFlags']['hasSpeaker'] ?? false;
-            return [[
-                'caption' => sprintf('%s%s', $camera['name'] ?? '?', $hasSpeaker ? ' (Lautsprecher)' : ''),
-                'value'   => $cameraID,
-            ]];
+            return [
+                'options' => [[
+                    'caption' => sprintf('%s%s', $camera['name'] ?? '?', $hasSpeaker ? ' (Lautsprecher)' : ''),
+                    'value'   => $cameraID,
+                ]],
+                'status' => 'Gespeicherte Kamera erkannt: ' . ($camera['name'] ?? '?'),
+            ];
         }
 
-        return [[
-            'caption' => 'Gespeicherte Camera-ID (Name unbekannt — „Protect-Kameras auflisten\" klicken zum Prüfen)',
-            'value'   => $cameraID,
-        ]];
+        return [
+            'options' => [[
+                'caption' => 'Gespeicherte Camera-ID (Name unbekannt — „Protect-Kameras auflisten\" klicken zum Prüfen)',
+                'value'   => $cameraID,
+            ]],
+            'status' => 'Gespeicherte Camera-ID konnte gerade nicht aufgelöst werden (API-Key/Verbindung prüfen).',
+        ];
     }
 
     // =====================================================================
@@ -485,6 +505,35 @@ class UniFiDoor extends IPSModule
             IPS_SetMediaCached($mediaID, true);
             IPS_SetMediaFile($mediaID, 'media/unifidoor_' . $this->InstanceID . '.jpg', false);
         }
+    }
+
+    /**
+     * Bindet die RTSP(S)-Stream-URL der G6 als natives Symcon-Stream-
+     * Medienobjekt ein (IPS_CreateMedia(MEDIATYPE_STREAM)). IP-Symcon spielt
+     * RTSP-Streams damit direkt im Browser (WebFront) und in den Apps ab und
+     * agiert dabei selbst als Verteiler — kein Restreamer wie go2rtc nötig.
+     * Voraussetzung laut Symcon-Dokumentation: H.264-Kodierung (die G6 läuft
+     * standardmäßig genau darauf).
+     */
+    private function RegisterMediaStream(): void
+    {
+        $url = $this->ReadPropertyString('StreamURL');
+        if ($url === '') {
+            return;
+        }
+
+        $ident = 'Stream';
+        $mediaID = @$this->GetIDForIdent($ident);
+
+        if ($mediaID === false) {
+            $mediaID = IPS_CreateMedia(MEDIATYPE_STREAM);
+            IPS_SetParent($mediaID, $this->InstanceID);
+            IPS_SetIdent($mediaID, $ident);
+            IPS_SetName($mediaID, 'Live-Stream');
+            IPS_SetPosition($mediaID, 6);
+        }
+
+        IPS_SetMediaFile($mediaID, $url, false);
     }
 
     /**

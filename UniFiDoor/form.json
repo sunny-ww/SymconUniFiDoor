@@ -106,12 +106,12 @@
                 {
                     "type": "ValidationTextBox",
                     "name": "StreamURL",
-                    "caption": "Stream-URL (HLS/WebRTC via go2rtc)",
+                    "caption": "RTSP(S)-Stream-URL der G6 (optional)",
                     "width": "600px"
                 },
                 {
                     "type": "Label",
-                    "caption": "Optional. RTSP läuft nicht im Browser — hier die vom Restreamer bereitgestellte HLS- oder WebRTC-Adresse eintragen."
+                    "caption": "Optional, direkt die rtsps://-Adresse der G6 aus UniFi Protect eintragen (Kamera → RTSP-Freigabe). IP-Symcon spielt RTSP/RTSPS nativ im WebFront und in den Apps ab, sofern H.264-kodiert — bei der G6 im Standard-Modus der Fall. Legt beim Übernehmen automatisch ein eigenes Live-Stream-Medienobjekt an, kein externer Restreamer nötig."
                 }
             ]
         },

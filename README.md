@@ -13,6 +13,7 @@ als Ersatz für das SIP-basierte DoorIP, das mit UniFi-Klingeln nicht funktionie
 | Letztes Klingeln | Zeitstempel |
 | Kamerabild | Medien-Objekt, bei jedem Klingeln aktualisiert. Quelle mit Priorität: 1) frei wählbares Livebild-Medienobjekt, 2) offizielle Protect-API (`GET /v1/cameras/{id}/snapshot`), 3) G6-Snapshot-URL als Fallback |
 | Livebild (optional) | Beliebiges bestehendes Bild-Medienobjekt (z. B. UniFi-Protect-Modul, Image Grabber) wird laufend übernommen |
+| Live-Video (optional) | RTSP(S)-Stream der G6 als natives Symcon-Stream-Medienobjekt — kein Restreamer nötig |
 | Tür öffnen | Aktion über die UniFi-Access-Developer-API — **verifiziert am echten Gerät** |
 | Tür-/Kamera-Auswahl | Per Radio-Button bzw. Dropdown, live aus der API befüllt — kein manuelles Eintippen von IDs nötig |
 | Push | Benachrichtigung mit Sprungziel in die Türansicht (siehe Einschränkungen unten) |
@@ -58,9 +59,11 @@ Testton) — die eigentliche Kodierung/Übertragung übernimmt `ffmpeg`, das auf
 Symcon-Server installiert sein muss. Eine Live-Mikrofon-Übertragung für ein echtes
 Gespräch ist ein separater, größerer Ausbauschritt und noch nicht Teil des Moduls.
 
-**Live-Video im Browser** kommt nicht direkt aus Protect: RTSP spielt kein Browser ab.
-Wer Bewegtbild in der Visualisierung will, stellt go2rtc oder MediaMTX daneben und
-trägt hier die davon erzeugte HLS- oder WebRTC-Adresse ein.
+**Live-Video** läuft über IP-Symcons eigenen Stream-Medientyp: Einfach die
+`rtsps://`-Adresse der G6 (UniFi Protect → Kamera → RTSP-Freigabe) unter
+*Kamera → RTSP(S)-Stream-URL* eintragen. IP-Symcon spielt RTSP/RTSPS nativ im
+WebFront und in den Apps ab, sofern H.264-kodiert — bei der G6 im
+Standard-Kodierungsmodus der Fall. Kein Restreamer wie go2rtc oder MediaMTX nötig.
 
 ## Voraussetzungen
 
