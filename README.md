@@ -137,8 +137,12 @@ http://<IP-der-Kamera>/snap.jpeg
 
 ### 4. Webhook für das Klingeln
 
-Die Webhook-Adresse im Konfigurationsformular anzeigen lassen und in UniFi Protect
-im **Alarm Manager** als Ziel für das Klingel-Ereignis eintragen.
+*Webhook-Pfad anzeigen* im Konfigurationsformular klicken — das liefert nur den Pfad
+(z. B. `/hook/unifidoor/12345`), da das Modul die von außen erreichbare Adresse eures
+Symcon-Servers nicht kennen kann. Davor die Basis-Adresse eurer **WebHook-Control**-Instanz
+ergänzen (Host + Port, Standardport 3777, in deren eigener Instanzkonfiguration
+nachsehbar) und das Ergebnis in UniFi Protect im **Alarm Manager** als Ziel für das
+Klingel-Ereignis eintragen.
 
 Optional, nur bei einem fest montierten Wandpanel mit der neuen Kachel Visualisierung:
 Unter *Bei Klingeln automatisch öffnen* den Haken setzen. Das Kamera-Medienobjekt aus

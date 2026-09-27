@@ -230,12 +230,12 @@
         },
         {
             "type": "Label",
-            "caption": "Webhook-Adresse für den Protect Alarm Manager:"
+            "caption": "Webhook-Pfad für den Protect Alarm Manager — an die Basis-Adresse deines Symcon-Servers anhängen (Host und Port deiner WebHook-Control-Instanz; Port dort in deren eigener Konfiguration nachsehen, Standard ist 3777):"
         },
         {
             "type": "Button",
-            "caption": "Webhook-URL anzeigen",
-            "onClick": "echo 'http://<Symcon-IP>:3777' . UFD_GetWebhookURL($id);"
+            "caption": "Webhook-Pfad anzeigen",
+            "onClick": "echo UFD_GetWebhookURL($id);"
         }
     ],
     "status": [
