@@ -70,19 +70,19 @@ class UniFiDoor extends IPSModule
     }
 
     /**
-     * Liefert das Konfigurationsformular. Ist bereits eine Door-ID
-     * gespeichert, wird sie als vorbelegte Option in die Radio-Button-Gruppe
-     * eingesetzt, damit beim Öffnen etwas Sinnvolles ausgewählt ist, auch
-     * bevor „Verfügbare Türen auflisten" geklickt wurde.
+     * Liefert das Konfigurationsformular. Sind bereits eine Door-ID und/oder
+     * eine Camera-ID gespeichert, werden sie als vorbelegte Option in die
+     * jeweilige Auswahl eingesetzt, damit beim Öffnen etwas Sinnvolles
+     * ausgewählt ist, auch bevor „auflisten" geklickt wurde.
      */
     public function GetConfigurationForm()
     {
         $raw = file_get_contents(__DIR__ . '/form.json');
 
-        $doorID = $this->ReadPropertyString('DoorID');
-        if ($doorID === '') {
-            return $raw;
-        }
+        $preset = [
+            'DoorID'   => ['value' => $this->ReadPropertyString('DoorID'), 'caption' => 'Gespeicherte Door-ID (Name unbekannt — „Verfügbare Türen auflisten\" klicken zum Prüfen)'],
+            'CameraID' => ['value' => $this->ReadPropertyString('CameraID'), 'caption' => 'Gespeicherte Camera-ID (Name unbekannt — „Protect-Kameras auflisten\" klicken zum Prüfen)'],
+        ];
 
         $form = json_decode($raw, true);
         if (!is_array($form)) {
@@ -94,10 +94,11 @@ class UniFiDoor extends IPSModule
                 continue;
             }
             foreach ($panel['items'] as &$item) {
-                if (($item['name'] ?? '') === 'DoorID') {
+                $name = $item['name'] ?? '';
+                if (isset($preset[$name]) && $preset[$name]['value'] !== '') {
                     $item['options'] = [[
-                        'caption' => 'Gespeicherte Door-ID (Name unbekannt — „Verfügbare Türen auflisten\" klicken zum Prüfen)',
-                        'value'   => $doorID,
+                        'caption' => $preset[$name]['caption'],
+                        'value'   => $preset[$name]['value'],
                     ]];
                 }
             }
@@ -634,6 +635,46 @@ class UniFiDoor extends IPSModule
         }
 
         return json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Lädt die verfügbaren Protect-Kameras und befüllt das Kamera-Dropdown
+     * im offenen Konfigurationsformular live nach. Bleibt die zuvor
+     * gespeicherte Camera-ID unter den Treffern, bleibt sie ausgewählt.
+     */
+    public function RefreshCameraList(): void
+    {
+        $cameras = $this->ProtectApiRequest('GET', '/v1/cameras');
+        if ($cameras === false) {
+            $this->UpdateFormField('CameraListStatus', 'caption', 'Abruf fehlgeschlagen, siehe Meldungen-Log.');
+            return;
+        }
+
+        $options = [];
+        foreach ($cameras as $camera) {
+            $hasSpeaker = $camera['featureFlags']['hasSpeaker'] ?? false;
+            $options[] = [
+                'caption' => sprintf('%s%s', $camera['name'] ?? '?', $hasSpeaker ? ' (Lautsprecher)' : ''),
+                'value'   => $camera['id'] ?? '',
+            ];
+        }
+
+        if (count($options) === 0) {
+            $this->UpdateFormField('CameraListStatus', 'caption', 'Keine Kameras gefunden.');
+            return;
+        }
+
+        $this->UpdateFormField('CameraID', 'options', json_encode($options));
+
+        $current = $this->ReadPropertyString('CameraID');
+        foreach ($options as $option) {
+            if ($option['value'] === $current) {
+                $this->UpdateFormField('CameraID', 'value', $current);
+                break;
+            }
+        }
+
+        $this->UpdateFormField('CameraListStatus', 'caption', count($options) . ' Kamera(s) gefunden.');
     }
 
     /**

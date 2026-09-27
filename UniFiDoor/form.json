@@ -134,14 +134,20 @@
                     "caption": "Erzeugen unter unifi.ui.com → Settings → API Keys → Create New API Key. Wird nur einmal angezeigt — direkt kopieren. Getrennt vom Access-API-Token oben, da Gegensprechen über die Protect-API läuft."
                 },
                 {
-                    "type": "ValidationTextBox",
+                    "type": "Select",
                     "name": "CameraID",
-                    "caption": "Protect-Camera-ID der G6"
+                    "caption": "Kamera",
+                    "options": []
+                },
+                {
+                    "type": "Label",
+                    "name": "CameraListStatus",
+                    "caption": "Noch keine Kameras abgerufen."
                 },
                 {
                     "type": "Button",
                     "caption": "Protect-Kameras auflisten",
-                    "onClick": "echo UFD_ListProtectCameras($id);"
+                    "onClick": "UFD_RefreshCameraList($id);"
                 },
                 {
                     "type": "Button",
