@@ -107,15 +107,35 @@ class UniFiDoor extends IPSModule
     }
 
     /**
-     * Listet die verfügbaren Türen auf — Hilfsfunktion zum Ermitteln der Door-ID.
+     * Listet die verfügbaren Türen mit Klartext-Namen auf — Hilfsfunktion zum
+     * Ermitteln der Door-ID, ohne das rohe API-JSON lesen zu müssen.
      */
     public function ListDoors(): string
     {
         $result = $this->apiRequest('GET', '/api/v1/developer/doors');
         if ($result === false) {
-            return '';
+            return 'Abruf fehlgeschlagen, siehe Meldungen-Log.';
         }
-        return json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+
+        $doors = $result['data'] ?? [];
+        $lines = [];
+        foreach ($doors as $door) {
+            if (($door['type'] ?? '') !== 'door') {
+                continue;
+            }
+            $lines[] = sprintf(
+                '%s  —  %s (%s)',
+                $door['id'] ?? '?',
+                $door['name'] ?? '?',
+                $door['full_name'] ?? '?'
+            );
+        }
+
+        if (count($lines) === 0) {
+            return 'Keine Türen gefunden. Ist am Hub in UniFi Access eine Tür angelegt?';
+        }
+
+        return implode("\n", $lines);
     }
 
     /**

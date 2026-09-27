@@ -52,6 +52,10 @@
                     "caption": "Door-ID"
                 },
                 {
+                    "type": "Label",
+                    "caption": "Erst Host, Port und API-Token oben eintragen und übernehmen, dann unten auf 'Verfügbare Türen auflisten' klicken. Jede Zeile zeigt 'ID — Name (Standort)'; die ID (langer Code vor dem ersten Gedankenstrich) hier oben eintragen."
+                },
+                {
                     "type": "Button",
                     "caption": "Verfügbare Türen auflisten",
                     "onClick": "echo UFD_ListDoors($id);"
