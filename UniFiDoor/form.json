@@ -74,53 +74,75 @@
             "expanded": true,
             "items": [
                 {
-                    "type": "ValidationTextBox",
-                    "name": "SnapshotURL",
-                    "caption": "Snapshot-URL der G6 (Fallback)",
-                    "width": "600px"
-                },
-                {
                     "type": "Label",
-                    "caption": "Bei aktiviertem anonymem Snapshot: http://<IP-der-G6>/snap.jpeg (Benutzer ubnt, Gerätepasswort aus der Konsole). Reihenfolge: 1) unten ausgewähltes Livebild-Medienobjekt, 2) offizielle Protect-API-Snapshot (falls im Bereich „Gegensprechen\" ein API-Key und eine Camera-ID hinterlegt sind), 3) diese Snapshot-URL."
+                    "caption": "Zwei getrennte, unabhängige Dinge: ein STANDBILD (einzelnes Foto, wird beim Klingeln aktualisiert) und ein VIDEO-STREAM (durchlaufendes Live-Video). Jedes Feld unten ist entsprechend mit [Bild] oder [Stream] gekennzeichnet — bitte nicht vertauschen, sonst kommt die Fehlermeldung \"ist kein Bild\" bzw. \"ist kein Stream\"."
                 },
                 {
-                    "type": "SelectMedia",
-                    "name": "LiveImageMediaID",
-                    "caption": "Kamera für Livebild (optional, Bild-Medienobjekt wählen)"
+                    "type": "ExpansionPanel",
+                    "caption": "Standbild (Snapshot) — einzelnes Foto",
+                    "expanded": true,
+                    "items": [
+                        {
+                            "type": "SelectMedia",
+                            "name": "LiveImageMediaID",
+                            "caption": "[Bild] Bestehendes Bild-Medienobjekt übernehmen (optional)"
+                        },
+                        {
+                            "type": "Label",
+                            "caption": "Nur ein BILD-Medienobjekt auswählen (Symcon-Medientyp \"Bild\"), z. B. das Snapshot-Medienobjekt einer UniFi-Protect-Modul-Instanz oder eines Image Grabbers — kein Stream-Medienobjekt! Diese Instanz übernimmt dann laufend dessen aktuelles Foto als eigenes Standbild. Höchste Priorität aller drei Standbild-Quellen."
+                        },
+                        {
+                            "type": "NumberSpinner",
+                            "name": "LiveImageIntervalSeconds",
+                            "caption": "Standbild aktualisieren alle (Sekunden, 0 = nur beim Klingeln)",
+                            "minimum": 0,
+                            "maximum": 3600
+                        },
+                        {
+                            "type": "Label",
+                            "caption": "Gilt für alle drei Standbild-Quellen (Bild-Medienobjekt, offizielle Protect-API, Snapshot-URL unten) gemeinsam."
+                        },
+                        {
+                            "type": "ValidationTextBox",
+                            "name": "SnapshotURL",
+                            "caption": "[Bild] Snapshot-URL der G6 (Fallback, falls oben nichts ausgewählt und kein API-Key hinterlegt ist)",
+                            "width": "600px"
+                        },
+                        {
+                            "type": "Label",
+                            "caption": "Bei aktiviertem anonymem Snapshot: http://<IP-der-G6>/snap.jpeg (Benutzer ubnt, Gerätepasswort aus der Konsole). Reihenfolge der Standbild-Quellen: 1) Bild-Medienobjekt oben, 2) offizielle Protect-API-Snapshot (API-Key + Camera-ID im Bereich \"Gegensprechen\"), 3) diese Snapshot-URL."
+                        },
+                        {
+                            "type": "Label",
+                            "caption": "Empfehlung: Funktioniert der anonyme Snapshot der G6 (snap.jpeg) nicht zuverlässig, stattdessen oben das Snapshot-Medienobjekt der ohnehin vorhandenen UniFi-Protect-Modul-Instanz auswählen — dort ist die Kamera bereits eingerichtet und authentifiziert."
+                        }
+                    ]
                 },
                 {
-                    "type": "Label",
-                    "caption": "Optional: Bestehendes Bild-Medienobjekt einer beliebigen Kamera-Instanz auswählen (z. B. das Snapshot-Medienobjekt einer UniFi-Protect-Modul-Instanz, ein Image Grabber o. ä.). Diese Instanz übernimmt dann laufend dessen aktuelles Bild als eigenes Livebild — über den normalen Medienobjekt-Mechanismus von IP-Symcon."
-                },
-                {
-                    "type": "Label",
-                    "caption": "Empfehlung: Funktioniert der anonyme Snapshot der G6 (snap.jpeg) nicht zuverlässig, hier stattdessen das Snapshot-Medienobjekt der ohnehin vorhandenen UniFi-Protect-Modul-Instanz auswählen — dort ist die Kamera bereits eingerichtet und authentifiziert."
-                },
-                {
-                    "type": "NumberSpinner",
-                    "name": "LiveImageIntervalSeconds",
-                    "caption": "Livebild aktualisieren alle (Sekunden, 0 = nur beim Klingeln)",
-                    "minimum": 0,
-                    "maximum": 3600
-                },
-                {
-                    "type": "SelectMedia",
-                    "name": "LiveStreamMediaID",
-                    "caption": "Bestehendes Stream-Medienobjekt übernehmen (optional)"
-                },
-                {
-                    "type": "Label",
-                    "caption": "Optional: Ein bereits vorhandenes Stream-Medienobjekt auswählen, z. B. „Stream_High\" einer UniFi-Protect-Modul-Instanz. Dessen URL wird übernommen — hat Vorrang vor der Stream-URL unten. Wichtig: Hier ein Bild-Medienobjekt (z. B. einen Snapshot) auszuwählen funktioniert nicht, es muss ein Stream sein."
-                },
-                {
-                    "type": "ValidationTextBox",
-                    "name": "StreamURL",
-                    "caption": "RTSP(S)-Stream-URL der G6 (optional, falls oben nichts ausgewählt)",
-                    "width": "600px"
-                },
-                {
-                    "type": "Label",
-                    "caption": "Direkt die rtsps://-Adresse der G6 aus UniFi Protect eintragen (Kamera → RTSP-Freigabe). IP-Symcon spielt RTSP/RTSPS nativ im WebFront und in den Apps ab, sofern H.264-kodiert — bei der G6 im Standard-Modus der Fall. Legt beim Übernehmen automatisch ein eigenes Live-Stream-Medienobjekt an, kein externer Restreamer nötig."
+                    "type": "ExpansionPanel",
+                    "caption": "Video-Stream — durchlaufendes Live-Video",
+                    "expanded": false,
+                    "items": [
+                        {
+                            "type": "SelectMedia",
+                            "name": "LiveStreamMediaID",
+                            "caption": "[Stream] Bestehendes Stream-Medienobjekt übernehmen (optional)"
+                        },
+                        {
+                            "type": "Label",
+                            "caption": "Nur ein STREAM-Medienobjekt auswählen (Symcon-Medientyp \"Stream\"), z. B. „Stream_High\" einer UniFi-Protect-Modul-Instanz — kein Bild-/Snapshot-Medienobjekt! Dessen URL wird übernommen. Höchste Priorität; hat Vorrang vor der manuell eingetragenen Stream-URL unten."
+                        },
+                        {
+                            "type": "ValidationTextBox",
+                            "name": "StreamURL",
+                            "caption": "[Stream] RTSP(S)-Stream-URL der G6 (Fallback, falls oben nichts ausgewählt)",
+                            "width": "600px"
+                        },
+                        {
+                            "type": "Label",
+                            "caption": "Direkt die rtsps://-Adresse der G6 aus UniFi Protect eintragen (Kamera → RTSP-Freigabe). IP-Symcon spielt RTSP/RTSPS nativ im WebFront und in den Apps ab, sofern H.264-kodiert — bei der G6 im Standard-Modus der Fall. Legt beim Übernehmen automatisch ein eigenes Live-Stream-Medienobjekt an, kein externer Restreamer nötig."
+                        }
+                    ]
                 }
             ]
         },
