@@ -71,23 +71,27 @@ class UniFiDoor extends IPSModule
 
     /**
      * Liefert das Konfigurationsformular. Sind bereits eine Door-ID und/oder
-     * eine Camera-ID gespeichert, werden sie als vorbelegte Option in die
-     * jeweilige Auswahl eingesetzt, damit beim Öffnen etwas Sinnvolles
-     * ausgewählt ist, auch bevor „auflisten" geklickt wurde.
+     * eine Camera-ID gespeichert, wird ihr Klarname live über die jeweilige
+     * API nachgeschlagen und als vorbelegte Option eingesetzt — nicht nur
+     * beim ersten Öffnen, sondern bei jedem Neuaufbau des Formulars (z. B.
+     * direkt nach „Übernehmen"), damit der Name nicht wieder verschwindet.
+     * Schlägt der Abruf fehl, greift ein generischer Platzhalter, die ID
+     * selbst bleibt in jedem Fall erhalten.
      */
     public function GetConfigurationForm()
     {
         $raw = file_get_contents(__DIR__ . '/form.json');
 
-        $preset = [
-            'DoorID'   => ['value' => $this->ReadPropertyString('DoorID'), 'caption' => 'Gespeicherte Door-ID (Name unbekannt — „Verfügbare Türen auflisten\" klicken zum Prüfen)'],
-            'CameraID' => ['value' => $this->ReadPropertyString('CameraID'), 'caption' => 'Gespeicherte Camera-ID (Name unbekannt — „Protect-Kameras auflisten\" klicken zum Prüfen)'],
-        ];
-
         $form = json_decode($raw, true);
         if (!is_array($form)) {
             return $raw;
         }
+
+        $doorID   = $this->ReadPropertyString('DoorID');
+        $cameraID = $this->ReadPropertyString('CameraID');
+
+        $doorOptions   = $doorID !== '' ? $this->ResolveDoorOption($doorID) : null;
+        $cameraOptions = $cameraID !== '' ? $this->ResolveCameraOption($cameraID) : null;
 
         foreach ($form['elements'] as &$panel) {
             if (!isset($panel['items'])) {
@@ -95,11 +99,11 @@ class UniFiDoor extends IPSModule
             }
             foreach ($panel['items'] as &$item) {
                 $name = $item['name'] ?? '';
-                if (isset($preset[$name]) && $preset[$name]['value'] !== '') {
-                    $item['options'] = [[
-                        'caption' => $preset[$name]['caption'],
-                        'value'   => $preset[$name]['value'],
-                    ]];
+                if ($name === 'DoorID' && $doorOptions !== null) {
+                    $item['options'] = $doorOptions;
+                }
+                if ($name === 'CameraID' && $cameraOptions !== null) {
+                    $item['options'] = $cameraOptions;
                 }
             }
             unset($item);
@@ -107,6 +111,49 @@ class UniFiDoor extends IPSModule
         unset($panel);
 
         return json_encode($form);
+    }
+
+    /**
+     * @return array{0: array{caption: string, value: string}}
+     */
+    private function ResolveDoorOption(string $doorID): array
+    {
+        $result = $this->apiRequest('GET', '/api/v1/developer/doors');
+        if ($result !== false) {
+            foreach (($result['data'] ?? []) as $door) {
+                if (($door['id'] ?? '') === $doorID) {
+                    return [[
+                        'caption' => sprintf('%s (%s)', $door['name'] ?? '?', $door['full_name'] ?? '?'),
+                        'value'   => $doorID,
+                    ]];
+                }
+            }
+        }
+
+        return [[
+            'caption' => 'Gespeicherte Door-ID (Name unbekannt — „Verfügbare Türen auflisten\" klicken zum Prüfen)',
+            'value'   => $doorID,
+        ]];
+    }
+
+    /**
+     * @return array{0: array{caption: string, value: string}}
+     */
+    private function ResolveCameraOption(string $cameraID): array
+    {
+        $camera = $this->ProtectApiRequest('GET', "/v1/cameras/{$cameraID}");
+        if ($camera !== false) {
+            $hasSpeaker = $camera['featureFlags']['hasSpeaker'] ?? false;
+            return [[
+                'caption' => sprintf('%s%s', $camera['name'] ?? '?', $hasSpeaker ? ' (Lautsprecher)' : ''),
+                'value'   => $cameraID,
+            ]];
+        }
+
+        return [[
+            'caption' => 'Gespeicherte Camera-ID (Name unbekannt — „Protect-Kameras auflisten\" klicken zum Prüfen)',
+            'value'   => $cameraID,
+        ]];
     }
 
     // =====================================================================
