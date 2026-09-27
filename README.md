@@ -37,7 +37,7 @@ trägt hier die davon erzeugte HLS- oder WebRTC-Adresse ein.
 Im Symcon Module Store unter *Modul über Git-Repository hinzufügen*:
 
 ```
-https://github.com/<dein-account>/SymconUniFiDoor
+https://github.com/sunny-ww/SymconUniFiDoor
 ```
 
 ## Einrichtung
