@@ -3,3 +3,6 @@ Thumbs.db
 *.log
 .idea/
 .vscode/
+
+# Enthält private Infrastrukturdetails (IP-Adressen, Instanz-IDs, Stream-Keys)
+CLAUDE.md
