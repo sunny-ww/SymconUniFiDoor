@@ -334,18 +334,36 @@ class UniFiDoor extends IPSModule
         }
 
         $visu = $this->ReadPropertyInteger('VisuInstanceID');
-        $target = $this->ReadPropertyInteger('NotifyTargetID');
         if ($visu > 0 && IPS_InstanceExists($visu)) {
             @WFC_PushNotification(
                 $visu,
                 'Es klingelt',
                 IPS_GetName($this->InstanceID),
                 'alarm',
-                $target > 0 ? $target : $this->InstanceID
+                $this->DetermineRingTargetID()
             );
         }
 
         $this->SendDebug('Ring', 'Klingel-Ereignis verarbeitet', 0);
+    }
+
+    /**
+     * Bestimmt, wohin die Push-Meldung beim Antippen springt. Ist explizit
+     * ein Sprungziel gesetzt, hat das Vorrang. Ohne Angabe springt es direkt
+     * zum eigenen Snapshot-Medienobjekt — das wurde in HandleRing() kurz
+     * zuvor aktualisiert, zeigt also sofort, wer an der Tür steht, egal aus
+     * welcher der drei möglichen Quellen (Livebild-Medienobjekt, offizielle
+     * Protect-API, G6-Snapshot-URL) das Bild stammt.
+     */
+    private function DetermineRingTargetID(): int
+    {
+        $target = $this->ReadPropertyInteger('NotifyTargetID');
+        if ($target > 0) {
+            return $target;
+        }
+
+        $snapshotID = @$this->GetIDForIdent('Snapshot');
+        return $snapshotID !== false ? $snapshotID : $this->InstanceID;
     }
 
     // =====================================================================

@@ -191,7 +191,11 @@
                 {
                     "type": "SelectObject",
                     "name": "NotifyTargetID",
-                    "caption": "Sprungziel beim Antippen der Push-Meldung"
+                    "caption": "Sprungziel beim Antippen der Push-Meldung (optional)"
+                },
+                {
+                    "type": "Label",
+                    "caption": "Ohne Auswahl springt der Tap automatisch zum eigenen Türkamera-Snapshot — der wird beim Klingeln immer zuerst aktualisiert, du siehst also direkt, wer draußen steht. Hier nur etwas eintragen, wenn stattdessen z. B. eine bestimmte Kamera-Instanz mit Live-Video geöffnet werden soll."
                 }
             ]
         }
