@@ -30,6 +30,7 @@ class UniFiDoor extends IPSModule
         $this->RegisterPropertyInteger('RingResetSeconds', 10);
         $this->RegisterPropertyInteger('NotifyTargetID', 0);
         $this->RegisterPropertyInteger('VisuInstanceID', 0);
+        $this->RegisterPropertyString('SwitchPageName', '');
 
         // --- Gegensprechen (offizielle Protect Integration API) ---
         $this->RegisterPropertyString('ProtectApiKey', '');
@@ -342,6 +343,14 @@ class UniFiDoor extends IPSModule
                 'alarm',
                 $this->DetermineRingTargetID()
             );
+
+            // Für ein fest montiertes WebFront-Wandpanel: springt dort ohne
+            // jedes Antippen direkt zum konfigurierten Kamera-Reiter und
+            // weckt es dabei aus dem Idle-Zustand auf.
+            $pageName = $this->ReadPropertyString('SwitchPageName');
+            if ($pageName !== '') {
+                @WFC_SwitchPage($visu, $pageName);
+            }
         }
 
         $this->SendDebug('Ring', 'Klingel-Ereignis verarbeitet', 0);

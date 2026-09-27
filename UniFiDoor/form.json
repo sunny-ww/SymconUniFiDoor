@@ -200,6 +200,15 @@
                 {
                     "type": "Label",
                     "caption": "WICHTIG: Ein Livebild direkt im Benachrichtigungs-Banner (ohne Antippen) unterstützt die Symcon-App nicht — nur Titel und Text erscheinen dort. Das gewählte Medienobjekt muss außerdem in einer WebFront-Kachel platziert sein, sonst scheitert der Sprung beim Antippen mit „TargetID is too deep\" lautlos."
+                },
+                {
+                    "type": "ValidationTextBox",
+                    "name": "SwitchPageName",
+                    "caption": "WebFront-Reiter für automatischen Sprung ohne Antippen (optional)"
+                },
+                {
+                    "type": "Label",
+                    "caption": "Nur sinnvoll bei einem fest montierten WebFront-Wandpanel (Kiosk-Modus): Beim Klingeln wechselt das Panel automatisch auf diesen Reiter und wacht dabei aus dem Ruhezustand auf — ganz ohne Antippen. Den Reiternamen (z. B. „item1234\") findest du im WebFront-Editor am jeweiligen Reiter, dort steht er in Klammern hinter „Konfiguration\"."
                 }
             ]
         }
