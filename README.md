@@ -69,7 +69,8 @@ Standard-Kodierungsmodus der Fall. Kein Restreamer wie go2rtc oder MediaMTX nöt
 
 ## Voraussetzungen
 
-- IP-Symcon 8.0 oder neuer
+- IP-Symcon 8.2 oder neuer (nutzt ausschließlich die neue Kachel Visualisierung
+  für Push/Wandpanel-Funktionen, `VISU_OpenObject` braucht mindestens 8.2)
 - UniFi-Konsole mit installierter **Access**-Applikation
 - UniFi Access Door Hub (getestet: Door Hub Mini) mit angelegter Tür
 - Eine UniFi-Türstation mit Klingeltaster (getestet: G6 Entry)

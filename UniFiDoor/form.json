@@ -190,7 +190,7 @@
                 },
                 {
                     "type": "Label",
-                    "caption": "Funktioniert sowohl mit der neuen Kachel Visualisierung als auch der alten WebFront Visualisierung — das Modul erkennt automatisch, welche der beiden hier hinterlegt ist."
+                    "caption": "Muss eine Instanz der neuen Kachel Visualisierung sein (Symcon ≥ 8.2). Die alte WebFront Visualisierung wird von diesem Modul nicht mehr unterstützt."
                 },
                 {
                     "type": "SelectMedia",
@@ -203,7 +203,7 @@
                 },
                 {
                     "type": "Label",
-                    "caption": "WICHTIG: Ein Livebild direkt im Benachrichtigungs-Banner (ohne Antippen) unterstützt die Symcon-App nicht — nur Titel und Text erscheinen dort. Bei der alten WebFront Visualisierung muss das gewählte Medienobjekt außerdem in einer WebFront-Kachel platziert sein, sonst scheitert der Sprung beim Antippen mit „TargetID is too deep\" lautlos."
+                    "caption": "WICHTIG: Ein Livebild direkt im Benachrichtigungs-Banner (ohne Antippen) unterstützt die Symcon-App nicht — nur Titel und Text erscheinen dort. Das gewählte Medienobjekt muss innerhalb der oben gewählten Kachel Visualisierung verfügbar sein."
                 },
                 {
                     "type": "CheckBox",
@@ -212,7 +212,7 @@
                 },
                 {
                     "type": "Label",
-                    "caption": "Öffnet beim Klingeln das oben gewählte Kamera-Medienobjekt live als Vollbild-Kachel auf allen gerade geöffneten Geräten dieser Visualisierung — z. B. ein fest montiertes Wandpanel im Kiosk-Modus. Braucht die neue Kachel Visualisierung (Symcon ≥ 8.2); bei der alten WebFront Visualisierung ohne Wirkung."
+                    "caption": "Öffnet beim Klingeln das oben gewählte Kamera-Medienobjekt live als Vollbild-Kachel auf allen gerade geöffneten Geräten dieser Visualisierung — z. B. ein fest montiertes Wandpanel im Kiosk-Modus."
                 }
             ]
         }

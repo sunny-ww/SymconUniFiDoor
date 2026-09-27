@@ -358,19 +358,14 @@ class UniFiDoor extends IPSModule
         if ($visu > 0 && IPS_InstanceExists($visu)) {
             $targetID = $this->DetermineRingTargetID();
 
-            // Neue Kachel Visualisierung (Symcon >= 7.0) zuerst versuchen,
-            // bei Fehlschlag auf die alte WebFront Visualisierung
-            // zurückfallen — je nachdem, welcher Visualisierungstyp unter
-            // VisuInstanceID hinterlegt ist.
-            $posted = @VISU_PostNotification($visu, 'Es klingelt', IPS_GetName($this->InstanceID), 'Alarm', $targetID);
-            if ($posted === false) {
-                @WFC_PushNotification($visu, 'Es klingelt', IPS_GetName($this->InstanceID), 'alarm', $targetID);
-            }
+            // Ausschließlich die neue Kachel Visualisierung (Symcon >= 7.0
+            // für Push, >= 8.2 für automatisches Öffnen). Die alte WebFront
+            // Visualisierung (WFC_*) wird bewusst nicht mehr unterstützt.
+            @VISU_PostNotification($visu, 'Es klingelt', IPS_GetName($this->InstanceID), 'Alarm', $targetID);
 
             // Für ein fest montiertes Wandpanel (Kiosk-Modus): öffnet das
             // Zielobjekt live auf allen offenen Geräten dieser Visualisierung
-            // — als Vollbild-Kachel, ganz ohne Antippen. Braucht die neue
-            // Kachel Visualisierung (Symcon >= 8.2).
+            // — als Vollbild-Kachel, ganz ohne Antippen.
             if ($this->ReadPropertyBoolean('AutoOpenOnRing')) {
                 @VISU_OpenObject($visu, $targetID, '');
             }
@@ -390,8 +385,8 @@ class UniFiDoor extends IPSModule
      *
      * Einschränkung der Symcon-App (nicht dieses Moduls): Ein Bild direkt im
      * Benachrichtigungs-Banner ohne Antippen ist nicht möglich, und das
-     * Zielobjekt muss in einer WebFront-Kachel platziert sein — sonst
-     * scheitert der Sprung beim Antippen lautlos mit „TargetID is too deep".
+     * Zielobjekt muss innerhalb der unter VisuInstanceID hinterlegten Kachel
+     * Visualisierung verfügbar sein (siehe VISU_PostNotification-Doku).
      */
     private function DetermineRingTargetID(): int
     {
