@@ -62,6 +62,11 @@ class UniFiDoor extends IPSModule
     {
         parent::ApplyChanges();
 
+        // Muss auch hier stehen, nicht nur in Create(): Create() läuft nur
+        // beim allerersten Anlegen einer Instanz, nicht bei Modul-Updates
+        // bereits bestehender Instanzen.
+        $this->SetVisualizationType(1);
+
         $this->RegisterHook(self::WEBHOOK_PREFIX . '/' . $this->InstanceID);
         $this->RegisterMediaSnapshot();
         $this->RegisterMediaStream();
