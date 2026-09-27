@@ -47,18 +47,24 @@
             "expanded": true,
             "items": [
                 {
-                    "type": "ValidationTextBox",
+                    "type": "RadioButtonGroup",
                     "name": "DoorID",
-                    "caption": "Door-ID"
+                    "caption": "Tür",
+                    "options": []
                 },
                 {
                     "type": "Label",
-                    "caption": "Erst Host, Port und API-Token oben eintragen und übernehmen, dann unten auf 'Verfügbare Türen auflisten' klicken. Jede Zeile zeigt 'ID — Name (Standort)'; die ID (langer Code vor dem ersten Gedankenstrich) hier oben eintragen."
+                    "name": "DoorListStatus",
+                    "caption": "Noch keine Türen abgerufen."
+                },
+                {
+                    "type": "Label",
+                    "caption": "Erst Host, Port und API-Token oben eintragen und übernehmen, dann auf 'Verfügbare Türen auflisten' klicken. Bei genau einer gefundenen Tür wird sie automatisch ausgewählt."
                 },
                 {
                     "type": "Button",
                     "caption": "Verfügbare Türen auflisten",
-                    "onClick": "echo UFD_ListDoors($id);"
+                    "onClick": "UFD_RefreshDoorList($id);"
                 }
             ]
         },

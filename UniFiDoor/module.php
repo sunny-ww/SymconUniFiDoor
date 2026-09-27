@@ -69,6 +69,45 @@ class UniFiDoor extends IPSModule
         $this->SetStatus(102);
     }
 
+    /**
+     * Liefert das Konfigurationsformular. Ist bereits eine Door-ID
+     * gespeichert, wird sie als vorbelegte Option in die Radio-Button-Gruppe
+     * eingesetzt, damit beim Öffnen etwas Sinnvolles ausgewählt ist, auch
+     * bevor „Verfügbare Türen auflisten" geklickt wurde.
+     */
+    public function GetConfigurationForm()
+    {
+        $raw = file_get_contents(__DIR__ . '/form.json');
+
+        $doorID = $this->ReadPropertyString('DoorID');
+        if ($doorID === '') {
+            return $raw;
+        }
+
+        $form = json_decode($raw, true);
+        if (!is_array($form)) {
+            return $raw;
+        }
+
+        foreach ($form['elements'] as &$panel) {
+            if (!isset($panel['items'])) {
+                continue;
+            }
+            foreach ($panel['items'] as &$item) {
+                if (($item['name'] ?? '') === 'DoorID') {
+                    $item['options'] = [[
+                        'caption' => 'Gespeicherte Door-ID (Name unbekannt — „Verfügbare Türen auflisten\" klicken zum Prüfen)',
+                        'value'   => $doorID,
+                    ]];
+                }
+            }
+            unset($item);
+        }
+        unset($panel);
+
+        return json_encode($form);
+    }
+
     // =====================================================================
     //  Aktionen
     // =====================================================================
@@ -136,6 +175,59 @@ class UniFiDoor extends IPSModule
         }
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * Lädt die verfügbaren Türen und befüllt die Radio-Button-Auswahl im
+     * offenen Konfigurationsformular live nach. Bei genau einer gefundenen
+     * Tür wird sie automatisch ausgewählt; ist die zuvor gespeicherte
+     * Door-ID noch unter den Treffern, bleibt sie ausgewählt.
+     */
+    public function RefreshDoorList(): void
+    {
+        $result = $this->apiRequest('GET', '/api/v1/developer/doors');
+        if ($result === false) {
+            $this->UpdateFormField('DoorListStatus', 'caption', 'Abruf fehlgeschlagen, siehe Meldungen-Log.');
+            return;
+        }
+
+        $doors = $result['data'] ?? [];
+        $options = [];
+        foreach ($doors as $door) {
+            if (($door['type'] ?? '') !== 'door') {
+                continue;
+            }
+            $options[] = [
+                'caption' => sprintf('%s (%s)', $door['name'] ?? '?', $door['full_name'] ?? '?'),
+                'value'   => $door['id'] ?? '',
+            ];
+        }
+
+        if (count($options) === 0) {
+            $this->UpdateFormField('DoorListStatus', 'caption', 'Keine Türen gefunden. Ist am Hub in UniFi Access eine Tür angelegt?');
+            return;
+        }
+
+        $this->UpdateFormField('DoorID', 'options', json_encode($options));
+
+        $current = $this->ReadPropertyString('DoorID');
+        $stillValid = false;
+        foreach ($options as $option) {
+            if ($option['value'] === $current) {
+                $stillValid = true;
+                break;
+            }
+        }
+
+        if (count($options) === 1) {
+            $this->UpdateFormField('DoorID', 'value', $options[0]['value']);
+            $this->UpdateFormField('DoorListStatus', 'caption', 'Eine Tür gefunden und automatisch ausgewählt.');
+        } elseif ($stillValid) {
+            $this->UpdateFormField('DoorID', 'value', $current);
+            $this->UpdateFormField('DoorListStatus', 'caption', count($options) . ' Türen gefunden.');
+        } else {
+            $this->UpdateFormField('DoorListStatus', 'caption', count($options) . ' Türen gefunden — bitte auswählen.');
+        }
     }
 
     /**
