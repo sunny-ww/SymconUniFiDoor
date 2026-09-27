@@ -15,8 +15,27 @@ als Ersatz für das SIP-basierte DoorIP, das mit UniFi-Klingeln nicht funktionie
 | Livebild (optional) | Beliebiges bestehendes Bild-Medienobjekt (z. B. UniFi-Protect-Modul, Image Grabber) wird laufend übernommen |
 | Tür öffnen | Aktion über die UniFi-Access-Developer-API — **verifiziert am echten Gerät** |
 | Tür-/Kamera-Auswahl | Per Radio-Button bzw. Dropdown, live aus der API befüllt — kein manuelles Eintippen von IDs nötig |
-| Push | Benachrichtigung mit Sprungziel in die Türansicht |
+| Push | Benachrichtigung mit Sprungziel in die Türansicht (siehe Einschränkungen unten) |
+| Wandpanel-Sprung (optional) | Fest montiertes WebFront-Panel wechselt beim Klingeln automatisch, ganz ohne Antippen, auf den Kamera-Reiter — via `WFC_SwitchPage()` |
 | Gegensprechen | Testton über die offizielle UniFi Protect Integration API — siehe unten |
+
+### Push-Benachrichtigung — Einschränkungen
+
+Zwei Dinge, die an der Symcon-App liegen, nicht am Modul:
+
+- **Kein Livebild im Benachrichtigungs-Banner selbst.** Titel und Text sind alles, was
+  vor dem Antippen sichtbar ist — ein Bild lässt sich laut Symcon-Entwickler technisch
+  nicht einbetten.
+- **Das Sprungziel muss ein Medienobjekt sein, das in einer WebFront-Kachel liegt.**
+  Ist es nur ein Kind-Objekt der Instanz, aber auf keiner Visualisierungsseite platziert,
+  scheitert der Sprung beim Antippen lautlos mit „TargetID is too deep".
+- **Push-Benachrichtigungen benötigen ein gültiges Symcon-App-Abo** sowie ein in
+  IP-Symcon registriertes Gerät — ohne das kommt gar nichts an.
+
+Wer eine echte "Livebild, bevor man reagiert"-Erfahrung will (wie früher bei DoorIP per
+SIP-Early-Media), erreicht das nur über ein **fest montiertes WebFront-Wandpanel**: Mit
+dem *WebFront-Reiter*-Feld unten schaltet das Panel beim Klingeln automatisch auf den
+Kamera-Reiter um und weckt sich dabei aus dem Ruhezustand — ganz ohne SIP.
 
 ### Gegensprechen
 
@@ -114,6 +133,11 @@ http://<IP-der-Kamera>/snap.jpeg
 
 Die Webhook-Adresse im Konfigurationsformular anzeigen lassen und in UniFi Protect
 im **Alarm Manager** als Ziel für das Klingel-Ereignis eintragen.
+
+Optional, nur bei einem fest montierten WebFront-Wandpanel: Im WebFront-Editor den
+Reiter mit dem Kamerabild öffnen, den dort in Klammern angezeigten Namen (z. B.
+„item1234") unter *WebFront-Reiter für automatischen Sprung* eintragen — das Panel
+schaltet beim Klingeln dann von selbst dorthin um.
 
 ### 5. Protect-API-Key einrichten (für Gegensprechen und/oder Kamerabild)
 
