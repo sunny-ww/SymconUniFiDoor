@@ -236,6 +236,10 @@
             "type": "Button",
             "caption": "Webhook-Pfad anzeigen",
             "onClick": "echo UFD_GetWebhookURL($id);"
+        },
+        {
+            "type": "Label",
+            "caption": "In UniFi Protect (nicht Access) unter Alarm Manager → New Alarm eintragen: Trigger „Doors\" → Haken bei „Ring\" (nicht Count/Door Status/Scan), Applies To = eure Tür, Action = Webhook → Custom Webhook mit obiger URL, Methode POST, Authentication None. Danach mit „Test Alarm\" prüfen, ob im Meldungen-Log ein Eintrag ankommt."
         }
     ],
     "status": [

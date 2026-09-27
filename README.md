@@ -137,12 +137,46 @@ http://<IP-der-Kamera>/snap.jpeg
 
 ### 4. Webhook für das Klingeln
 
-*Webhook-Pfad anzeigen* im Konfigurationsformular klicken — das liefert nur den Pfad
-(z. B. `/hook/unifidoor/12345`), da das Modul die von außen erreichbare Adresse eures
-Symcon-Servers nicht kennen kann. Davor die Basis-Adresse eurer **WebHook-Control**-Instanz
-ergänzen (Host + Port, Standardport 3777, in deren eigener Instanzkonfiguration
-nachsehbar) und das Ergebnis in UniFi Protect im **Alarm Manager** als Ziel für das
-Klingel-Ereignis eintragen.
+UniFi Protect muss Symcon aktiv mitteilen, wenn es klingelt — das passiert über einen
+**Alarm-Manager-Webhook**. Ohne den erfährt das Modul nie von einem Klingel-Ereignis.
+
+**a) URL zusammensetzen**
+
+Im Modul-Formular auf *Webhook-Pfad anzeigen* klicken — liefert nur den Pfad
+(z. B. `/hook/unifidoor/12345`), da das Modul eure von außen erreichbare Server-Adresse
+nicht kennen kann. Davor die Basis-Adresse ergänzen: dieselbe Adresse, mit der ihr
+Symcon im Browser öffnet, plus Port `:3777` (Standard-Webhook-Port, siehe ggf. eure
+WebHook-Control-Instanz, falls abweichend konfiguriert). Beispiel:
+
+```
+http://192.168.178.4:3777/hook/unifidoor/12345
+```
+
+**b) In UniFi Protect anlegen**
+
+In der **Protect-App** (nicht Access) → **Alarm Manager** → *New Alarm*:
+
+| Feld | Wert |
+|---|---|
+| Name | frei wählbar, z. B. „Symcon Webhook-Klingel" |
+| Trigger | **Doors** → Haken bei **Ring** (nicht Count/Door Status/Scan) |
+| Applies To | die G6-Tür anhaken |
+| Action | **Webhook** → *Custom Webhook* |
+| Delivery URL | die oben zusammengesetzte URL |
+| Delivery method | **POST** |
+| Authentication | **None** |
+| Content | Default Content (Use Thumbnails kann deaktiviert bleiben, das Modul holt Snapshots unabhängig davon) |
+
+Danach *Create* klicken.
+
+**c) Testen**
+
+Die Regel erneut öffnen und auf **„Test Alarm"** klicken — das simuliert ein
+Klingel-Ereignis, ohne dass jemand am Taster drücken muss. Direkt danach im
+Meldungen-/Debug-Log der Symcon-Instanz nachsehen: Unter `Webhook` sollte der rohe
+Payload auftauchen, und `Ring` kurz auf `true` springen. Kommt nichts an, zuerst
+prüfen, ob überhaupt eine **WebHook-Control**-Instanz in Symcon existiert (Pflicht,
+siehe Meldungen-Log — ohne die schlägt die Registrierung lautlos fehl).
 
 Optional, nur bei einem fest montierten Wandpanel mit der neuen Kachel Visualisierung:
 Unter *Bei Klingeln automatisch öffnen* den Haken setzen. Das Kamera-Medienobjekt aus
