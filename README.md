@@ -15,23 +15,27 @@ als Ersatz für das SIP-basierte DoorIP, das mit UniFi-Klingeln nicht funktionie
 | Livebild (optional) | Beliebiges bestehendes Bild-Medienobjekt (z. B. UniFi-Protect-Modul, Image Grabber) wird laufend übernommen — Fallback ist die G6-Snapshot-URL |
 | Tür öffnen | Aktion über die UniFi-Access-Developer-API |
 | Push | Benachrichtigung mit Sprungziel in die Türansicht |
-| Gegensprechen (experimentell) | Testton über den inoffiziellen Protect-Talkback-Kanal — siehe unten |
+| Gegensprechen | Testton über die offizielle UniFi Protect Integration API — siehe unten |
 
-### Gegensprechen — experimentell, unverifiziert
+### Gegensprechen
 
-Die G6 ist kein SIP-Gerät, und Ubiquiti dokumentiert keinen offiziellen Weg, von
-außen eine Audio-Session aufzubauen. Es gibt aber einen von der Protect-App selbst
-genutzten, undokumentierten WebSocket-Kanal
-(`wss://<Host>/proxy/protect/ws/talkback?speaker=<CameraID>`), den auch
-Community-Projekte wie `homebridge-unifi-protect` oder `go2rtc` nutzen. Bestätigt ist
-das bisher nur für reine Protect-Doorbells (G4 Doorbell Pro/Lite) — **ob die G6 Entry
-als UniFi-Access-Gerät denselben Kanal anbietet, ist offen** und muss am echten Gerät
-geprüft werden (siehe Einrichtung unten). Ubiquiti kann diesen Weg jederzeit ohne
-Vorwarnung ändern oder abschalten.
+Die G6 ist kein SIP-Gerät, aber UniFi Protect bietet seit einiger Zeit eine
+**offizielle, dokumentierte** Integration API (developer.ui.com/protect) mit einem
+Talkback-Endpunkt:
 
-Aktuell implementiert ist die Diagnose (Lautsprecher-Erkennung, Testton) — eine
-Live-Mikrofon-Übertragung für ein echtes Gespräch ist ein separater, größerer
-Ausbauschritt und noch nicht Teil des Moduls.
+```
+POST /v1/cameras/{id}/talkback-session
+```
+
+Antwort: eine RTP-Zieladresse plus Audio-Vorgabe (Opus, 24 kHz, 16 Bit). Die G6 Entry
+meldet laut `featureFlags.hasSpeaker` grundsätzlich Lautsprecher-Unterstützung —
+bestätigt am echten Gerät (siehe Einrichtung unten). Authentifiziert wird per
+API-Key (`X-API-Key`-Header), erzeugt unter **unifi.ui.com → Settings → API Keys**.
+
+Aktuell implementiert ist die Diagnose (Kameras auflisten, Lautsprecher-Prüfung,
+Testton) — die eigentliche Kodierung/Übertragung übernimmt `ffmpeg`, das auf dem
+Symcon-Server installiert sein muss. Eine Live-Mikrofon-Übertragung für ein echtes
+Gespräch ist ein separater, größerer Ausbauschritt und noch nicht Teil des Moduls.
 
 **Live-Video im Browser** kommt nicht direkt aus Protect: RTSP spielt kein Browser ab.
 Wer Bewegtbild in der Visualisierung will, stellt go2rtc oder MediaMTX daneben und
@@ -101,20 +105,20 @@ IP-Symcon; die G6-Snapshot-URL wird in diesem Fall nicht mehr benötigt.
 Die Webhook-Adresse im Konfigurationsformular anzeigen lassen und in UniFi Protect
 im **Alarm Manager** als Ziel für das Klingel-Ereignis eintragen.
 
-### 5. Gegensprechen testen (optional, experimentell)
+### 5. Gegensprechen testen (optional)
 
-1. Im Bereich *Gegensprechen* den lokalen Protect-Benutzernamen und -Passwort
-   eintragen (derselbe Kontotyp wie für das „Unifi Protect"-Modul)
-2. *Protect-Kameras auflisten* klicken, die G6 anhand des Namens identifizieren
+1. `ffmpeg` auf dem Symcon-Server installieren, falls noch nicht vorhanden
+   (z. B. `apt install ffmpeg`)
+2. API-Key erzeugen: **unifi.ui.com → Settings → API Keys → Create New API Key**
+   (wird nur einmal angezeigt) und im Bereich *Gegensprechen* eintragen
+3. *Protect-Kameras auflisten* klicken, die G6 anhand des Namens identifizieren
    und ihre ID unter *Protect-Camera-ID der G6* eintragen
-3. *Lautsprecher-Unterstützung prüfen* klicken — meldet die G6 keinen Lautsprecher,
-   funktioniert der Talkback-Kanal auf diesem Gerät vermutlich nicht
-4. Testdatei erzeugen: `ffmpeg -f lavfi -i "sine=frequency=1000:duration=1" -ar 24000 -ac 1 -c:a aac -profile:a aac_low -f adts test.aac`
-5. Pfad zur Datei eintragen, *Testton senden* klicken und an der Tür lauschen
+4. *Lautsprecher-Unterstützung prüfen* klicken — sollte Lautsprecher-Unterstützung
+   melden
+5. *Testton senden* klicken (ohne Testdatei-Pfad genügt das) und an der Tür lauschen
 
-Kommt kein Ton an, ist entweder der Talkback-Kanal für UniFi-Access-Geräte nicht
-verfügbar, oder die Camera-ID/Zugangsdaten stimmen nicht — Details stehen im
-Meldungen-Log der Instanz.
+Kommt kein Ton an, steht der genaue Fehler (z. B. abgelehnter API-Key, fehlendes
+ffmpeg, unerwartetes Session-Format) im Meldungen-/Debug-Log der Instanz.
 
 ## Lizenz
 

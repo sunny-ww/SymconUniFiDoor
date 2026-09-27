@@ -71,7 +71,7 @@
                 },
                 {
                     "type": "Label",
-                    "caption": "Bei aktiviertem anonymem Snapshot: http://<IP-der-G6>/snap.jpeg (Benutzer ubnt, Gerätepasswort aus der Konsole). Wird nur verwendet, wenn unten keine Kamera ausgewählt ist."
+                    "caption": "Bei aktiviertem anonymem Snapshot: http://<IP-der-G6>/snap.jpeg (Benutzer ubnt, Gerätepasswort aus der Konsole). Reihenfolge: 1) unten ausgewähltes Livebild-Medienobjekt, 2) offizielle Protect-API-Snapshot (falls im Bereich „Gegensprechen\" ein API-Key und eine Camera-ID hinterlegt sind), 3) diese Snapshot-URL."
                 },
                 {
                     "type": "SelectMedia",
@@ -107,26 +107,21 @@
         },
         {
             "type": "ExpansionPanel",
-            "caption": "Gegensprechen (experimentell)",
+            "caption": "Gegensprechen",
             "expanded": false,
             "items": [
                 {
                     "type": "Label",
-                    "caption": "ACHTUNG: Nutzt einen von Ubiquiti nicht dokumentierten Kanal der Protect-App. Funktioniert nachweislich bei reinen Protect-Doorbells (z. B. G4 Doorbell Pro/Lite) — ob die G6 Entry als UniFi-Access-Gerät denselben Weg anbietet, ist NICHT bestätigt und kann sich mit jedem Firmware-Update ändern. Vor dem eigentlichen Sprechen erst unten prüfen und testen."
-                },
-                {
-                    "type": "ValidationTextBox",
-                    "name": "ProtectUsername",
-                    "caption": "Protect-Benutzername"
+                    "caption": "Nutzt die offizielle UniFi Protect Integration API (developer.ui.com/protect). Bestätigt: Die G6 Entry meldet Lautsprecher-Unterstützung. Benötigt einen API-Key sowie ffmpeg auf dem Symcon-Server (für die Audio-Kodierung nach Opus)."
                 },
                 {
                     "type": "PasswordTextBox",
-                    "name": "ProtectPassword",
-                    "caption": "Protect-Passwort"
+                    "name": "ProtectApiKey",
+                    "caption": "Protect-API-Key"
                 },
                 {
                     "type": "Label",
-                    "caption": "Ein lokaler UniFi-Benutzer (Local Access Only, kein 2FA) — derselbe Kontotyp, der auch für das „Unifi Protect\"-Modul in Symcon verwendet wird. Getrennt vom Access-API-Token oben, weil Gegensprechen über die Protect-API läuft."
+                    "caption": "Erzeugen unter unifi.ui.com → Settings → API Keys → Create New API Key. Wird nur einmal angezeigt — direkt kopieren. Getrennt vom Access-API-Token oben, da Gegensprechen über die Protect-API läuft."
                 },
                 {
                     "type": "ValidationTextBox",
@@ -146,12 +141,12 @@
                 {
                     "type": "ValidationTextBox",
                     "name": "TalkbackTestFile",
-                    "caption": "Pfad zu einer AAC-ADTS-Testdatei auf dem Symcon-Server",
+                    "caption": "Pfad zu einer Audiodatei auf dem Symcon-Server (optional)",
                     "width": "600px"
                 },
                 {
                     "type": "Label",
-                    "caption": "Erzeugen z. B. mit: ffmpeg -f lavfi -i \"sine=frequency=1000:duration=1\" -ar 24000 -ac 1 -c:a aac -profile:a aac_low -f adts test.aac"
+                    "caption": "Optional — jedes von ffmpeg lesbare Format (mp3, wav, …) geht, wird automatisch nach Opus umkodiert. Leer lassen für einen eingebauten 2-Sekunden-Testton."
                 },
                 {
                     "type": "Button",
