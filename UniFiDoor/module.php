@@ -421,9 +421,11 @@ class UniFiDoor extends IPSModule
     public function RefreshSnapshot(): bool
     {
         $liveMediaID = $this->ReadPropertyInteger('LiveImageMediaID');
-        if ($liveMediaID > 0) {
-            return $this->CopyLiveImageMedia($liveMediaID);
+        if ($liveMediaID > 0 && $this->CopyLiveImageMedia($liveMediaID)) {
+            return true;
         }
+        // Bei Fehlschlag (z. B. falscher Medientyp) auf die nächste Quelle
+        // ausweichen, statt den Snapshot komplett scheitern zu lassen.
 
         $apiKey   = $this->ReadPropertyString('ProtectApiKey');
         $cameraID = $this->ReadPropertyString('CameraID');
@@ -514,16 +516,20 @@ class UniFiDoor extends IPSModule
     }
 
     /**
-     * Bindet die RTSP(S)-Stream-URL der G6 als natives Symcon-Stream-
-     * Medienobjekt ein (IPS_CreateMedia(MEDIATYPE_STREAM)). IP-Symcon spielt
-     * RTSP-Streams damit direkt im Browser (WebFront) und in den Apps ab und
-     * agiert dabei selbst als Verteiler — kein Restreamer wie go2rtc nötig.
-     * Voraussetzung laut Symcon-Dokumentation: H.264-Kodierung (die G6 läuft
-     * standardmäßig genau darauf).
+     * Bindet einen RTSP(S)-Stream als natives Symcon-Stream-Medienobjekt ein
+     * (IPS_CreateMedia(MEDIATYPE_STREAM)). IP-Symcon spielt RTSP-Streams
+     * damit direkt im Browser (WebFront) und in den Apps ab und agiert dabei
+     * selbst als Verteiler — kein Restreamer wie go2rtc nötig. Voraussetzung
+     * laut Symcon-Dokumentation: H.264-Kodierung (die G6 läuft standardmäßig
+     * genau darauf).
+     *
+     * Quelle mit Priorität: 1) frei wählbares externes Stream-Medienobjekt
+     * (z. B. „Stream_High" einer UniFi-Protect-Modul-Instanz) — dessen
+     * URL wird übernommen, 2) manuell eingetragene Stream-URL.
      */
     private function RegisterMediaStream(): void
     {
-        $url = $this->ReadPropertyString('StreamURL');
+        $url = $this->ResolveStreamURL();
         if ($url === '') {
             return;
         }
@@ -543,6 +549,25 @@ class UniFiDoor extends IPSModule
     }
 
     /**
+     * Liefert die zu verwendende Stream-URL: bevorzugt aus einem frei
+     * wählbaren externen Stream-Medienobjekt übernommen, sonst die manuell
+     * eingetragene StreamURL.
+     */
+    private function ResolveStreamURL(): string
+    {
+        $sourceMediaID = $this->ReadPropertyInteger('LiveStreamMediaID');
+        if ($sourceMediaID > 0 && IPS_MediaExists($sourceMediaID)) {
+            $sourceMedia = IPS_GetMedia($sourceMediaID);
+            if ($sourceMedia['MediaType'] === MEDIATYPE_STREAM) {
+                return $sourceMedia['MediaFile'];
+            }
+            $this->LogMessage("Als Live-Stream ausgewähltes Medienobjekt {$sourceMediaID} ist kein Stream", KL_ERROR);
+        }
+
+        return $this->ReadPropertyString('StreamURL');
+    }
+
+    /**
      * Übernimmt den Inhalt eines fremden Bild-Medienobjekts (z. B. das
      * Snapshot-Medienobjekt einer UniFi-Protect-Modul-Instanz) in das
      * eigene Medienobjekt, damit die Instanz-Kachel unabhängig von der
@@ -557,7 +582,10 @@ class UniFiDoor extends IPSModule
 
         $sourceMedia = IPS_GetMedia($sourceMediaID);
         if ($sourceMedia['MediaType'] !== MEDIATYPE_IMAGE) {
-            $this->LogMessage("Als Livebild ausgewähltes Medienobjekt {$sourceMediaID} ist kein Bild", KL_ERROR);
+            $hint = $sourceMedia['MediaType'] === MEDIATYPE_STREAM
+                ? ' — das ist ein Video-Stream, dafür bitte das Feld „Bestehendes Stream-Medienobjekt übernehmen\" im Bereich Kamera verwenden'
+                : '';
+            $this->LogMessage("Als Livebild ausgewähltes Medienobjekt {$sourceMediaID} ist kein Bild{$hint}", KL_ERROR);
             return false;
         }
 

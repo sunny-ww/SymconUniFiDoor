@@ -104,14 +104,23 @@
                     "maximum": 3600
                 },
                 {
+                    "type": "SelectMedia",
+                    "name": "LiveStreamMediaID",
+                    "caption": "Bestehendes Stream-Medienobjekt übernehmen (optional)"
+                },
+                {
+                    "type": "Label",
+                    "caption": "Optional: Ein bereits vorhandenes Stream-Medienobjekt auswählen, z. B. „Stream_High\" einer UniFi-Protect-Modul-Instanz. Dessen URL wird übernommen — hat Vorrang vor der Stream-URL unten. Wichtig: Hier ein Bild-Medienobjekt (z. B. einen Snapshot) auszuwählen funktioniert nicht, es muss ein Stream sein."
+                },
+                {
                     "type": "ValidationTextBox",
                     "name": "StreamURL",
-                    "caption": "RTSP(S)-Stream-URL der G6 (optional)",
+                    "caption": "RTSP(S)-Stream-URL der G6 (optional, falls oben nichts ausgewählt)",
                     "width": "600px"
                 },
                 {
                     "type": "Label",
-                    "caption": "Optional, direkt die rtsps://-Adresse der G6 aus UniFi Protect eintragen (Kamera → RTSP-Freigabe). IP-Symcon spielt RTSP/RTSPS nativ im WebFront und in den Apps ab, sofern H.264-kodiert — bei der G6 im Standard-Modus der Fall. Legt beim Übernehmen automatisch ein eigenes Live-Stream-Medienobjekt an, kein externer Restreamer nötig."
+                    "caption": "Direkt die rtsps://-Adresse der G6 aus UniFi Protect eintragen (Kamera → RTSP-Freigabe). IP-Symcon spielt RTSP/RTSPS nativ im WebFront und in den Apps ab, sofern H.264-kodiert — bei der G6 im Standard-Modus der Fall. Legt beim Übernehmen automatisch ein eigenes Live-Stream-Medienobjekt an, kein externer Restreamer nötig."
                 }
             ]
         },
