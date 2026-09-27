@@ -549,7 +549,8 @@ class UniFiDoor extends IPSModule
     //  Gegensprechen (Talkback) — über die offizielle UniFi Protect
     //  Integration API (developer.ui.com/protect), nicht mehr über einen
     //  Reverse-Engineering-Weg. Authentifizierung per API-Key (Header
-    //  X-API-Key), erzeugt unter unifi.ui.com → Settings → API Keys.
+    //  X-API-Key), erzeugt direkt auf der UniFi-Konsole unter
+    //  Einstellungen → Integrations (nicht auf unifi.ui.com).
     //  Bestätigt: die G6 Entry meldet featureFlags.hasSpeaker = true.
     // =====================================================================
 
@@ -601,7 +602,7 @@ class UniFiDoor extends IPSModule
         }
 
         if ($code === 401 || $code === 403) {
-            $this->LogMessage("Protect-API-Key abgelehnt (HTTP {$code}). Key unter unifi.ui.com → Settings → API Keys prüfen.", KL_ERROR);
+            $this->LogMessage("Protect-API-Key abgelehnt (HTTP {$code}). Key auf der UniFi-Konsole unter Einstellungen → Integrations prüfen.", KL_ERROR);
             return false;
         }
 

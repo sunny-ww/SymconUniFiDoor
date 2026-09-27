@@ -30,7 +30,8 @@ POST /v1/cameras/{id}/talkback-session
 Antwort: eine RTP-Zieladresse plus Audio-Vorgabe (Opus, 24 kHz, 16 Bit). Die G6 Entry
 meldet laut `featureFlags.hasSpeaker` grundsätzlich Lautsprecher-Unterstützung —
 bestätigt am echten Gerät (siehe Einrichtung unten). Authentifiziert wird per
-API-Key (`X-API-Key`-Header), erzeugt unter **unifi.ui.com → Settings → API Keys**.
+API-Key (`X-API-Key`-Header), erzeugt direkt auf der **UniFi-Konsole** unter
+**Einstellungen → Integrations** (nicht auf unifi.ui.com).
 
 Aktuell implementiert ist die Diagnose (Kameras auflisten, Lautsprecher-Prüfung,
 Testton) — die eigentliche Kodierung/Übertragung übernimmt `ffmpeg`, das auf dem
@@ -109,10 +110,11 @@ im **Alarm Manager** als Ziel für das Klingel-Ereignis eintragen.
 
 1. `ffmpeg` auf dem Symcon-Server installieren, falls noch nicht vorhanden
    (z. B. `apt install ffmpeg`)
-2. API-Key erzeugen: **unifi.ui.com → Settings → API Keys → Create New API Key**
-   (wird nur einmal angezeigt) und im Bereich *Gegensprechen* eintragen
-3. *Protect-Kameras auflisten* klicken, die G6 anhand des Namens identifizieren
-   und ihre ID unter *Protect-Camera-ID der G6* eintragen
+2. API-Key erzeugen: auf der **UniFi-Konsole** (nicht unifi.ui.com) unter
+   **Einstellungen → Integrations → Create New API Key** (wird nur einmal
+   angezeigt) und im Bereich *Gegensprechen* eintragen
+3. *Protect-Kameras auflisten* klicken und die G6 im Dropdown auswählen
+   (Kameras mit Lautsprecher sind entsprechend markiert)
 4. *Lautsprecher-Unterstützung prüfen* klicken — sollte Lautsprecher-Unterstützung
    melden
 5. *Testton senden* klicken (ohne Testdatei-Pfad genügt das) und an der Tür lauschen

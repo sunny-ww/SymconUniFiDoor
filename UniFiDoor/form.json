@@ -131,7 +131,7 @@
                 },
                 {
                     "type": "Label",
-                    "caption": "Erzeugen unter unifi.ui.com → Settings → API Keys → Create New API Key. Wird nur einmal angezeigt — direkt kopieren. Getrennt vom Access-API-Token oben, da Gegensprechen über die Protect-API läuft."
+                    "caption": "Erzeugen direkt auf der UniFi-Konsole (nicht auf unifi.ui.com): Einstellungen → Integrations → Create New API Key. Wird nur einmal angezeigt — direkt kopieren. Getrennt vom Access-API-Token oben, da Gegensprechen über die Protect-API läuft."
                 },
                 {
                     "type": "Select",
