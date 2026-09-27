@@ -11,9 +11,10 @@ als Ersatz für das SIP-basierte DoorIP, das mit UniFi-Klingeln nicht funktionie
 |---|---|
 | Klingel-Ereignis | Boolean-Variable, gesetzt per Webhook aus dem Protect Alarm Manager |
 | Letztes Klingeln | Zeitstempel |
-| Kamerabild | Medien-Objekt, bei jedem Klingeln aktualisiert |
-| Livebild (optional) | Beliebiges bestehendes Bild-Medienobjekt (z. B. UniFi-Protect-Modul, Image Grabber) wird laufend übernommen — Fallback ist die G6-Snapshot-URL |
-| Tür öffnen | Aktion über die UniFi-Access-Developer-API |
+| Kamerabild | Medien-Objekt, bei jedem Klingeln aktualisiert. Quelle mit Priorität: 1) frei wählbares Livebild-Medienobjekt, 2) offizielle Protect-API (`GET /v1/cameras/{id}/snapshot`), 3) G6-Snapshot-URL als Fallback |
+| Livebild (optional) | Beliebiges bestehendes Bild-Medienobjekt (z. B. UniFi-Protect-Modul, Image Grabber) wird laufend übernommen |
+| Tür öffnen | Aktion über die UniFi-Access-Developer-API — **verifiziert am echten Gerät** |
+| Tür-/Kamera-Auswahl | Per Radio-Button bzw. Dropdown, live aus der API befüllt — kein manuelles Eintippen von IDs nötig |
 | Push | Benachrichtigung mit Sprungziel in die Türansicht |
 | Gegensprechen | Testton über die offizielle UniFi Protect Integration API — siehe unten |
 
@@ -80,13 +81,28 @@ Meldet das Modul **HTTP 403**, eine Stufe erweitern und erneut testen.
 ### 2. Instanz anlegen
 
 Host, Port (Standard 12445) und Token eintragen, übernehmen.
-Dann *Verfügbare Türen auflisten* klicken und die Door-ID übernehmen.
+Dann im Bereich *Tür* auf *Verfügbare Türen auflisten* klicken — die gefundene(n)
+Tür(en) erscheinen als Radio-Buttons; bei genau einer Tür wird sie automatisch
+ausgewählt. Der Klarname bleibt auch nach *Übernehmen* stehen (wird bei jedem
+Öffnen des Formulars live nachgeschlagen).
 
 Mit *Tür öffnen (Test)* prüfen, ob der Öffner anspricht.
 
 ### 3. Kamerabild
 
-Am einfachsten über den anonymen Snapshot: In der Weboberfläche der Kamera
+Drei mögliche Quellen, das Modul nutzt automatisch die erste verfügbare:
+
+**1) Livebild-Medienobjekt (höchste Priorität)** — unter *Kamera für Livebild* ein
+bestehendes Bild-Medienobjekt auswählen, z. B. das Snapshot-Medienobjekt einer
+bereits eingerichteten **UniFi-Protect-Modul**-Instanz. Übernimmt laufend dessen
+aktuelles Bild über den normalen Medienobjekt-Mechanismus von IP-Symcon.
+
+**2) Offizielle Protect-API (empfohlen, falls 1 nicht genutzt wird)** — siehe
+Schritt 5 unten: Sobald dort ein API-Key und eine Camera-ID hinterlegt sind, nutzt
+das Modul automatisch `GET /v1/cameras/{id}/snapshot`. Kein Extra-Setup an der
+Kamera nötig.
+
+**3) Anonymer G6-Snapshot (Fallback)** — In der Weboberfläche der Kamera
 (Benutzer `ubnt`, Gerätepasswort aus der Konsole) *Anonymous Snapshot* aktivieren,
 dann als Snapshot-URL eintragen:
 
@@ -94,27 +110,21 @@ dann als Snapshot-URL eintragen:
 http://<IP-der-Kamera>/snap.jpeg
 ```
 
-Funktioniert der anonyme Snapshot nicht zuverlässig (z. B. wegen Zertifikats- oder
-Netzwerkproblemen), unter *Kamera für Livebild* stattdessen ein bestehendes
-Bild-Medienobjekt auswählen — etwa das Snapshot-Medienobjekt einer bereits
-eingerichteten **UniFi-Protect-Modul**-Instanz. Diese Instanz übernimmt dann
-laufend dessen aktuelles Bild über den normalen Medienobjekt-Mechanismus von
-IP-Symcon; die G6-Snapshot-URL wird in diesem Fall nicht mehr benötigt.
-
 ### 4. Webhook für das Klingeln
 
 Die Webhook-Adresse im Konfigurationsformular anzeigen lassen und in UniFi Protect
 im **Alarm Manager** als Ziel für das Klingel-Ereignis eintragen.
 
-### 5. Gegensprechen testen (optional)
+### 5. Protect-API-Key einrichten (für Gegensprechen und/oder Kamerabild)
 
 1. `ffmpeg` auf dem Symcon-Server installieren, falls noch nicht vorhanden
-   (z. B. `apt install ffmpeg`)
+   (z. B. `apt install ffmpeg`) — nur für Gegensprechen nötig, nicht für den Snapshot
 2. API-Key erzeugen: auf der **UniFi-Konsole** (nicht unifi.ui.com) unter
    **Einstellungen → Integrations → Create New API Key** (wird nur einmal
    angezeigt) und im Bereich *Gegensprechen* eintragen
 3. *Protect-Kameras auflisten* klicken und die G6 im Dropdown auswählen
-   (Kameras mit Lautsprecher sind entsprechend markiert)
+   (Kameras mit Lautsprecher sind entsprechend markiert); damit ist automatisch
+   auch der Kamerabild-Snapshot aus Schritt 3, Quelle 2 aktiv
 4. *Lautsprecher-Unterstützung prüfen* klicken — sollte Lautsprecher-Unterstützung
    melden
 5. *Testton senden* klicken (ohne Testdatei-Pfad genügt das) und an der Tür lauschen
