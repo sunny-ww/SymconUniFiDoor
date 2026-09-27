@@ -16,8 +16,8 @@ als Ersatz für das SIP-basierte DoorIP, das mit UniFi-Klingeln nicht funktionie
 | Live-Video (optional) | RTSP(S)-Stream der G6 als natives Symcon-Stream-Medienobjekt — kein Restreamer nötig |
 | Tür öffnen | Aktion über die UniFi-Access-Developer-API — **verifiziert am echten Gerät** |
 | Tür-/Kamera-Auswahl | Per Radio-Button bzw. Dropdown, live aus der API befüllt — kein manuelles Eintippen von IDs nötig |
-| Push | Benachrichtigung mit Sprungziel in die Türansicht (siehe Einschränkungen unten) |
-| Wandpanel-Sprung (optional) | Fest montiertes WebFront-Panel wechselt beim Klingeln automatisch, ganz ohne Antippen, auf den Kamera-Reiter — via `WFC_SwitchPage()` |
+| Push | Benachrichtigung mit Sprungziel in die Türansicht (siehe Einschränkungen unten) — läuft über die neue **Kachel Visualisierung** (`VISU_PostNotification`), mit Fallback auf die alte **WebFront Visualisierung** (`WFC_PushNotification`) |
+| Wandpanel-Autoöffnen (optional) | Fest montiertes Panel mit Kachel Visualisierung zeigt beim Klingeln automatisch, ganz ohne Antippen, das Kamerabild als Vollbild-Kachel — via `VISU_OpenObject()` |
 | Gegensprechen | Testton über die offizielle UniFi Protect Integration API — siehe unten |
 
 ### Push-Benachrichtigung — Einschränkungen
@@ -27,16 +27,18 @@ Zwei Dinge, die an der Symcon-App liegen, nicht am Modul:
 - **Kein Livebild im Benachrichtigungs-Banner selbst.** Titel und Text sind alles, was
   vor dem Antippen sichtbar ist — ein Bild lässt sich laut Symcon-Entwickler technisch
   nicht einbetten.
-- **Das Sprungziel muss ein Medienobjekt sein, das in einer WebFront-Kachel liegt.**
-  Ist es nur ein Kind-Objekt der Instanz, aber auf keiner Visualisierungsseite platziert,
-  scheitert der Sprung beim Antippen lautlos mit „TargetID is too deep".
+- **Bei der alten WebFront Visualisierung** muss das Sprungziel ein Medienobjekt sein,
+  das in einer WebFront-Kachel liegt. Ist es nur ein Kind-Objekt der Instanz, aber auf
+  keiner Visualisierungsseite platziert, scheitert der Sprung beim Antippen lautlos mit
+  „TargetID is too deep". Bei der neuen Kachel Visualisierung tritt dieses Problem nicht auf.
 - **Push-Benachrichtigungen benötigen ein gültiges Symcon-App-Abo** sowie ein in
   IP-Symcon registriertes Gerät — ohne das kommt gar nichts an.
 
 Wer eine echte "Livebild, bevor man reagiert"-Erfahrung will (wie früher bei DoorIP per
-SIP-Early-Media), erreicht das nur über ein **fest montiertes WebFront-Wandpanel**: Mit
-dem *WebFront-Reiter*-Feld unten schaltet das Panel beim Klingeln automatisch auf den
-Kamera-Reiter um und weckt sich dabei aus dem Ruhezustand — ganz ohne SIP.
+SIP-Early-Media), erreicht das über ein **fest montiertes Wandpanel mit der neuen Kachel
+Visualisierung**: Mit dem Haken *Bei Klingeln automatisch öffnen* unten zeigt das Panel
+beim Klingeln automatisch das Kamerabild — ganz ohne SIP, ohne Antippen, ohne manuelle
+Reiter-Suche.
 
 ### Gegensprechen
 
@@ -137,12 +139,12 @@ http://<IP-der-Kamera>/snap.jpeg
 Die Webhook-Adresse im Konfigurationsformular anzeigen lassen und in UniFi Protect
 im **Alarm Manager** als Ziel für das Klingel-Ereignis eintragen.
 
-Optional, nur bei einem fest montierten WebFront-Wandpanel: WebFront-Instanz öffnen
-→ Reiter *Editor* → *WebFront Editor öffnen* → zum gewünschten Navigationsfeld
-(Kamera-Reiter) → Stift-Symbol klicken. In der Titelzeile des sich öffnenden Dialogs
-steht z. B. „Konfiguration (item1234)" — diese Zeichenfolge (inkl. „item") unter
-*WebFront-Reiter für automatischen Sprung* eintragen. Das Panel schaltet beim
-Klingeln dann von selbst dorthin um, auch aus dem Ruhezustand heraus.
+Optional, nur bei einem fest montierten Wandpanel mit der neuen Kachel Visualisierung:
+Unter *Bei Klingeln automatisch öffnen* den Haken setzen. Das Kamera-Medienobjekt aus
+*Kamera-Medienobjekt für Push-Ziel* (oder ohne Auswahl der eigene Türkamera-Snapshot)
+öffnet sich dann beim Klingeln automatisch als Vollbild-Kachel auf allen offenen Geräten
+dieser Visualisierung — kein Reiter-Suchen im Editor nötig. Braucht Symcon ≥ 8.2; bei
+der alten WebFront Visualisierung ohne Wirkung.
 
 ### 5. Protect-API-Key einrichten (für Gegensprechen und/oder Kamerabild)
 
