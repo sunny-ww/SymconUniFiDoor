@@ -12,11 +12,19 @@
                     "validate": "^$|^[0-9a-zA-Z\\.\\-]+$"
                 },
                 {
+                    "type": "Label",
+                    "caption": "Die IP-Adresse der UniFi-Konsole (UDM/UDM Pro) im lokalen Netz, z. B. 192.168.178.251 — ohne https:// und ohne Port."
+                },
+                {
                     "type": "NumberSpinner",
                     "name": "AccessPort",
                     "caption": "Port der Access-API",
                     "minimum": 1,
                     "maximum": 65535
+                },
+                {
+                    "type": "Label",
+                    "caption": "Standardport der UniFi-Access-API ist 12445. Nur ändern, falls in eurer Umgebung ein anderer Port konfiguriert ist."
                 },
                 {
                     "type": "PasswordTextBox",
@@ -25,7 +33,11 @@
                 },
                 {
                     "type": "Label",
-                    "caption": "Den Token in der Access-Applikation unter Einstellungen → Allgemein → API-Token erzeugen. Nicht über die Integrations-Seite der Konsole — die dortigen Token gehören zu Protect."
+                    "caption": "So erzeugen: Access-Applikation öffnen → Einstellungen → Allgemein → API-Token → Neu erstellen. NICHT über die Integrations-Seite der Konsole — die dortigen Token gehören zu Protect und werden von Access abgelehnt."
+                },
+                {
+                    "type": "Label",
+                    "caption": "Empfohlene Berechtigungen (Minimalprinzip): Standorte = Bearbeiten, Gerät = Anzeigen, Systemprotokoll = Anzeigen, alles Übrige = Keinen. Meldet die Instanz HTTP 403, hier eine Berechtigungsstufe erweitern."
                 }
             ]
         },
@@ -54,12 +66,32 @@
                 {
                     "type": "ValidationTextBox",
                     "name": "SnapshotURL",
-                    "caption": "Snapshot-URL",
+                    "caption": "Snapshot-URL der G6 (Fallback)",
                     "width": "600px"
                 },
                 {
                     "type": "Label",
-                    "caption": "Bei aktiviertem anonymem Snapshot: http://<IP-der-G6>/snap.jpeg"
+                    "caption": "Bei aktiviertem anonymem Snapshot: http://<IP-der-G6>/snap.jpeg (Benutzer ubnt, Gerätepasswort aus der Konsole). Wird nur verwendet, wenn unten keine Kamera ausgewählt ist."
+                },
+                {
+                    "type": "SelectMedia",
+                    "name": "LiveImageMediaID",
+                    "caption": "Kamera für Livebild (optional, Bild-Medienobjekt wählen)"
+                },
+                {
+                    "type": "Label",
+                    "caption": "Optional: Bestehendes Bild-Medienobjekt einer beliebigen Kamera-Instanz auswählen (z. B. das Snapshot-Medienobjekt einer UniFi-Protect-Modul-Instanz, ein Image Grabber o. ä.). Diese Instanz übernimmt dann laufend dessen aktuelles Bild als eigenes Livebild — über den normalen Medienobjekt-Mechanismus von IP-Symcon."
+                },
+                {
+                    "type": "Label",
+                    "caption": "Empfehlung: Funktioniert der anonyme Snapshot der G6 (snap.jpeg) nicht zuverlässig, hier stattdessen das Snapshot-Medienobjekt der ohnehin vorhandenen UniFi-Protect-Modul-Instanz auswählen — dort ist die Kamera bereits eingerichtet und authentifiziert."
+                },
+                {
+                    "type": "NumberSpinner",
+                    "name": "LiveImageIntervalSeconds",
+                    "caption": "Livebild aktualisieren alle (Sekunden, 0 = nur beim Klingeln)",
+                    "minimum": 0,
+                    "maximum": 3600
                 },
                 {
                     "type": "ValidationTextBox",

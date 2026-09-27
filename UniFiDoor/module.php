@@ -23,6 +23,8 @@ class UniFiDoor extends IPSModule
         // --- Kamera / Video ---
         $this->RegisterPropertyString('SnapshotURL', '');
         $this->RegisterPropertyString('StreamURL', '');
+        $this->RegisterPropertyInteger('LiveImageMediaID', 0);
+        $this->RegisterPropertyInteger('LiveImageIntervalSeconds', 0);
 
         // --- Verhalten ---
         $this->RegisterPropertyInteger('RingResetSeconds', 10);
@@ -39,6 +41,9 @@ class UniFiDoor extends IPSModule
 
         // Timer zum Zurücksetzen des Klingel-Status
         $this->RegisterTimer('ResetRing', 0, 'UFD_ResetRing($_IPS[\'TARGET\']);');
+
+        // Timer für das optionale, fortlaufende Livebild
+        $this->RegisterTimer('RefreshLiveImage', 0, 'UFD_RefreshSnapshot($_IPS[\'TARGET\']);');
     }
 
     public function ApplyChanges()
@@ -47,6 +52,9 @@ class UniFiDoor extends IPSModule
 
         $this->RegisterHook(self::WEBHOOK_PREFIX . '/' . $this->InstanceID);
         $this->RegisterMediaSnapshot();
+
+        $liveInterval = $this->ReadPropertyInteger('LiveImageIntervalSeconds');
+        $this->SetTimerInterval('RefreshLiveImage', $liveInterval > 0 ? $liveInterval * 1000 : 0);
 
         if ($this->ReadPropertyString('Host') === '' || $this->ReadPropertyString('AccessToken') === '') {
             $this->SetStatus(104); // Instanz inaktiv – Konfiguration unvollständig
@@ -179,8 +187,20 @@ class UniFiDoor extends IPSModule
     //  Snapshot
     // =====================================================================
 
+    /**
+     * Aktualisiert das Livebild. Ist eine frei wählbare Kamera (Medienobjekt)
+     * hinterlegt, wird deren aktueller Inhalt übernommen — das ist der
+     * Standard-Weg, über den IP-Symcon Kamerabilder bereits verteilt
+     * (Image Grabber, UniFi-Protect-Modul, eigene Snapshot-URL, …).
+     * Ohne Auswahl greift der Fallback auf die G6-Snapshot-URL.
+     */
     public function RefreshSnapshot(): bool
     {
+        $liveMediaID = $this->ReadPropertyInteger('LiveImageMediaID');
+        if ($liveMediaID > 0) {
+            return $this->CopyLiveImageMedia($liveMediaID);
+        }
+
         $url = $this->ReadPropertyString('SnapshotURL');
         if ($url === '') {
             return false;
@@ -220,8 +240,39 @@ class UniFiDoor extends IPSModule
             IPS_SetName($mediaID, 'Türkamera');
             IPS_SetPosition($mediaID, 5);
             IPS_SetMediaCached($mediaID, true);
-            IPS_SetMediaFile($mediaID, 'media/unifidoor_' . $this->InstanceID . '.jpg', false);
+            IPS_SetMediaFile($mediaID, 'media/unifidoor_' . $this->InstanceID . '.jpg', true);
         }
+    }
+
+    /**
+     * Übernimmt den Inhalt eines fremden Bild-Medienobjekts (z. B. das
+     * Snapshot-Medienobjekt einer UniFi-Protect-Modul-Instanz) in das
+     * eigene Medienobjekt, damit die Instanz-Kachel unabhängig von der
+     * Quelle immer das aktuelle Bild zeigt.
+     */
+    private function CopyLiveImageMedia(int $sourceMediaID): bool
+    {
+        if (!IPS_MediaExists($sourceMediaID)) {
+            $this->SendDebug('Livebild', "Medienobjekt {$sourceMediaID} existiert nicht mehr", 0);
+            return false;
+        }
+
+        $sourceMedia = IPS_GetMedia($sourceMediaID);
+        if ($sourceMedia['MediaType'] !== MEDIATYPE_IMAGE) {
+            $this->LogMessage("Als Livebild ausgewähltes Medienobjekt {$sourceMediaID} ist kein Bild", KL_ERROR);
+            return false;
+        }
+
+        $content = IPS_GetMediaContent($sourceMediaID);
+        if ($content === '') {
+            $this->SendDebug('Livebild', "Medienobjekt {$sourceMediaID} liefert kein Bild", 0);
+            return false;
+        }
+
+        $mediaID = $this->GetIDForIdent('Snapshot');
+        IPS_SetMediaContent($mediaID, $content);
+        IPS_SendMediaEvent($mediaID);
+        return true;
     }
 
     // =====================================================================

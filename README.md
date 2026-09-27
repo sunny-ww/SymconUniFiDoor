@@ -12,6 +12,7 @@ als Ersatz für das SIP-basierte DoorIP, das mit UniFi-Klingeln nicht funktionie
 | Klingel-Ereignis | Boolean-Variable, gesetzt per Webhook aus dem Protect Alarm Manager |
 | Letztes Klingeln | Zeitstempel |
 | Kamerabild | Medien-Objekt, bei jedem Klingeln aktualisiert |
+| Livebild (optional) | Beliebiges bestehendes Bild-Medienobjekt (z. B. UniFi-Protect-Modul, Image Grabber) wird laufend übernommen — Fallback ist die G6-Snapshot-URL |
 | Tür öffnen | Aktion über die UniFi-Access-Developer-API |
 | Push | Benachrichtigung mit Sprungziel in die Türansicht |
 
@@ -77,10 +78,32 @@ dann als Snapshot-URL eintragen:
 http://<IP-der-Kamera>/snap.jpeg
 ```
 
+Funktioniert der anonyme Snapshot nicht zuverlässig (z. B. wegen Zertifikats- oder
+Netzwerkproblemen), unter *Kamera für Livebild* stattdessen ein bestehendes
+Bild-Medienobjekt auswählen — etwa das Snapshot-Medienobjekt einer bereits
+eingerichteten **UniFi-Protect-Modul**-Instanz. Diese Instanz übernimmt dann
+laufend dessen aktuelles Bild über den normalen Medienobjekt-Mechanismus von
+IP-Symcon; die G6-Snapshot-URL wird in diesem Fall nicht mehr benötigt.
+
 ### 4. Webhook für das Klingeln
 
 Die Webhook-Adresse im Konfigurationsformular anzeigen lassen und in UniFi Protect
 im **Alarm Manager** als Ziel für das Klingel-Ereignis eintragen.
+
+## Veröffentlichung im Module Store
+
+Das Repository erfüllt die technischen Vorgaben (gültige `library.json`/`module.json`,
+eindeutige GUIDs, saubere Fehlerbehandlung). Für die eigentliche Listung im Store ist
+zusätzlich ein manueller Schritt über [account.symcon.de](https://account.symcon.de)
+nötig:
+
+1. Im Entwicklerbereich *Modul hinzufügen* und eine **Bundle-ID** vergeben
+   (umgekehrte Domain-Schreibweise, z. B. `de.fischersimon.unifidoor`)
+2. Dieses Git-Repository verknüpfen und den zu veröffentlichenden Commit wählen
+3. Mindestens eine Lokalisierung (Name, Beschreibung, Änderungen) hinterlegen
+4. Mindestens eine Kategorie zuweisen
+5. Zunächst im Beta- oder Testing-Kanal veröffentlichen (sofort sichtbar) — der
+   Stable-Kanal durchläuft eine Prüfung durch das Symcon-Team
 
 ## Lizenz
 

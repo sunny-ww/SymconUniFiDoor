@@ -1,11 +1,11 @@
 {
     "id": "{C9E4483F-84A5-4B85-83B5-0EFB68421985}",
     "author": "Simon Fischer",
-    "name": "UniFi Door",
+    "name": "UniFiDoor",
     "url": "https://github.com/sunny-ww/SymconUniFiDoor",
-    "version": 1,
+    "version": "1.0",
     "build": 1,
-    "date": 0,
+    "date": 1790460000,
     "compatibility": {
         "version": "8.0"
     }
