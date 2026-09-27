@@ -246,7 +246,7 @@ class UniFiDoor extends IPSModule
             IPS_SetName($mediaID, 'Türkamera');
             IPS_SetPosition($mediaID, 5);
             IPS_SetMediaCached($mediaID, true);
-            IPS_SetMediaFile($mediaID, 'media/unifidoor_' . $this->InstanceID . '.jpg', true);
+            IPS_SetMediaFile($mediaID, 'media/unifidoor_' . $this->InstanceID . '.jpg', false);
         }
     }
 
