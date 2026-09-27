@@ -325,13 +325,20 @@ class UniFiDoor extends IPSModule
             return;
         }
 
-        // Protect Alarm Manager und Access senden unterschiedliche Strukturen.
-        // Wir werten pragmatisch auf ein Klingel-Ereignis aus.
+        // Echte Struktur des Protect-Alarm-Manager-Webhooks (verifiziert per
+        // Test Alarm):
+        // {"alarm":{"triggers":[{"key":"ring","device":"...","eventId":"...",
+        // "timestamp":...}], ...}, "timestamp":..., "alarm_id":"..."}
+        // Ein Alarm kann mehrere Trigger enthalten — wir reagieren nur, wenn
+        // einer davon den Key "ring" trägt.
         $isRing = false;
-        foreach (['trigger', 'event', 'type', 'alarm'] as $key) {
-            if (isset($payload[$key]) && is_string($payload[$key])
-                && stripos($payload[$key], 'ring') !== false) {
-                $isRing = true;
+        $triggers = $payload['alarm']['triggers'] ?? [];
+        if (is_array($triggers)) {
+            foreach ($triggers as $trigger) {
+                if (($trigger['key'] ?? '') === 'ring') {
+                    $isRing = true;
+                    break;
+                }
             }
         }
 
