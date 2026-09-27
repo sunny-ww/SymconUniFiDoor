@@ -23,6 +23,7 @@ class UniFiDoor extends IPSModule
         // --- Kamera / Video ---
         $this->RegisterPropertyString('SnapshotURL', '');
         $this->RegisterPropertyString('StreamURL', '');
+        $this->RegisterPropertyInteger('LiveStreamMediaID', 0);
         $this->RegisterPropertyInteger('LiveImageMediaID', 0);
         $this->RegisterPropertyInteger('LiveImageIntervalSeconds', 0);
 
@@ -312,7 +313,7 @@ class UniFiDoor extends IPSModule
     //  Webhook — wird von UniFi Protect / Access aufgerufen
     // =====================================================================
 
-    protected function ProcessHookData(): void
+    protected function ProcessHookData()
     {
         $raw = file_get_contents('php://input');
         $this->SendDebug('Webhook', $raw, 0);
