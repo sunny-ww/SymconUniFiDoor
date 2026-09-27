@@ -116,21 +116,6 @@ Kommt kein Ton an, ist entweder der Talkback-Kanal für UniFi-Access-Geräte nic
 verfügbar, oder die Camera-ID/Zugangsdaten stimmen nicht — Details stehen im
 Meldungen-Log der Instanz.
 
-## Veröffentlichung im Module Store
-
-Das Repository erfüllt die technischen Vorgaben (gültige `library.json`/`module.json`,
-eindeutige GUIDs, saubere Fehlerbehandlung). Für die eigentliche Listung im Store ist
-zusätzlich ein manueller Schritt über [account.symcon.de](https://account.symcon.de)
-nötig:
-
-1. Im Entwicklerbereich *Modul hinzufügen* und eine **Bundle-ID** vergeben
-   (umgekehrte Domain-Schreibweise, z. B. `de.fischersimon.unifidoor`)
-2. Dieses Git-Repository verknüpfen und den zu veröffentlichenden Commit wählen
-3. Mindestens eine Lokalisierung (Name, Beschreibung, Änderungen) hinterlegen
-4. Mindestens eine Kategorie zuweisen
-5. Zunächst im Beta- oder Testing-Kanal veröffentlichen (sofort sichtbar) — der
-   Stable-Kanal durchläuft eine Prüfung durch das Symcon-Team
-
 ## Lizenz
 
 MIT
