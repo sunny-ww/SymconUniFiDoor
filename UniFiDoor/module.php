@@ -31,6 +31,12 @@ class UniFiDoor extends IPSModule
         $this->RegisterPropertyInteger('NotifyTargetID', 0);
         $this->RegisterPropertyInteger('VisuInstanceID', 0);
 
+        // --- Gegensprechen (experimentell, unverifiziert) ---
+        $this->RegisterPropertyString('ProtectUsername', '');
+        $this->RegisterPropertyString('ProtectPassword', '');
+        $this->RegisterPropertyString('CameraID', '');
+        $this->RegisterPropertyString('TalkbackTestFile', '');
+
         // --- Variablen ---
         $this->RegisterVariableBoolean('Ring', 'Es klingelt', '~Alert', 10);
         $this->RegisterVariableInteger('LastRing', 'Letztes Klingeln', '~UnixTimestamp', 20);
@@ -379,5 +385,329 @@ class UniFiDoor extends IPSModule
     public function GetWebhookURL(): string
     {
         return self::WEBHOOK_PREFIX . '/' . $this->InstanceID;
+    }
+
+    // =====================================================================
+    //  Gegensprechen (Talkback) — EXPERIMENTELL, UNVERIFIZIERT
+    //
+    //  Nutzt einen von der offiziellen UniFi-App verwendeten, aber von
+    //  Ubiquiti nicht dokumentierten WebSocket-Kanal der Protect-API
+    //  (wss://<Host>/proxy/protect/ws/talkback?speaker=<CameraID>).
+    //  Community-Projekte (z. B. homebridge-unifi-protect, go2rtc) nutzen
+    //  ihn erfolgreich für reine Protect-Doorbells (G4 Doorbell Pro/Lite).
+    //  Ob die G6 Entry als UniFi-Access-Gerät denselben Kanal anbietet, ist
+    //  NICHT bestätigt — das muss am echten Gerät geprüft werden
+    //  (CheckTalkbackSupport). Ubiquiti kann diesen Weg jederzeit ändern
+    //  oder abschalten, ohne Vorwarnung.
+    // =====================================================================
+
+    /**
+     * Meldet sich mit dem lokalen Protect-Benutzer an und liefert das
+     * Session-Token (Cookie „TOKEN") zurück. Getrennt vom Access-API-Token,
+     * weil der Talkback-Kanal über die Protect-API läuft, nicht über Access.
+     */
+    private function ProtectLogin(): ?string
+    {
+        $host = $this->ReadPropertyString('Host');
+        $user = $this->ReadPropertyString('ProtectUsername');
+        $pass = $this->ReadPropertyString('ProtectPassword');
+
+        if ($host === '' || $user === '' || $pass === '') {
+            $this->LogMessage('Protect-Zugangsdaten unvollständig (für Gegensprechen benötigt)', KL_ERROR);
+            return null;
+        }
+
+        $ch = curl_init("https://{$host}/api/auth/login");
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HEADER         => true,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false,
+            CURLOPT_TIMEOUT        => 8,
+            CURLOPT_POST           => true,
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+            CURLOPT_POSTFIELDS     => json_encode(['username' => $user, 'password' => $pass]),
+        ]);
+        $response = curl_exec($ch);
+        $code     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($response === false || $code !== 200) {
+            $this->LogMessage("Protect-Login fehlgeschlagen (HTTP {$code})", KL_ERROR);
+            return null;
+        }
+
+        if (!preg_match('/Set-Cookie:\s*TOKEN=([^;]+)/i', (string) $response, $matches)) {
+            $this->LogMessage('Protect-Login: Kein Session-Token in der Antwort gefunden', KL_ERROR);
+            return null;
+        }
+
+        return $matches[1];
+    }
+
+    /**
+     * Lädt das Protect-Bootstrap-Dokument (alle Kameras inkl. Fähigkeiten).
+     *
+     * @return array|null
+     */
+    private function ProtectBootstrap(string $token)
+    {
+        $host = $this->ReadPropertyString('Host');
+
+        $ch = curl_init("https://{$host}/proxy/protect/api/bootstrap");
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false,
+            CURLOPT_TIMEOUT        => 8,
+            CURLOPT_HTTPHEADER     => ["Cookie: TOKEN={$token}"],
+        ]);
+        $response = curl_exec($ch);
+        $code     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($response === false || $code !== 200) {
+            $this->LogMessage("Protect-Bootstrap-Abruf fehlgeschlagen (HTTP {$code})", KL_ERROR);
+            return null;
+        }
+
+        $bootstrap = json_decode((string) $response, true);
+        return is_array($bootstrap) ? $bootstrap : null;
+    }
+
+    /**
+     * Listet alle Protect-Kameras mit ihrer ID und ob laut Bootstrap ein
+     * Lautsprecher vorhanden ist — Hilfsfunktion zum Ermitteln der Camera-ID
+     * für das Gegensprechen-Feld.
+     */
+    public function ListProtectCameras(): string
+    {
+        $token = $this->ProtectLogin();
+        if ($token === null) {
+            return '';
+        }
+
+        $bootstrap = $this->ProtectBootstrap($token);
+        if ($bootstrap === null) {
+            return '';
+        }
+
+        $cameras = [];
+        foreach (($bootstrap['cameras'] ?? []) as $camera) {
+            $cameras[] = [
+                'id'         => $camera['id'] ?? '',
+                'name'       => $camera['name'] ?? '',
+                'hasSpeaker' => $camera['featureFlags']['hasSpeaker'] ?? false,
+            ];
+        }
+
+        return json_encode($cameras, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Prüft, ob die konfigurierte Camera-ID laut Protect-Bootstrap einen
+     * Lautsprecher besitzt. Das ist die Voraussetzung für Gegensprechen —
+     * aber keine Garantie, dass der Talkback-Kanal auf diesem Gerät auch
+     * tatsächlich funktioniert.
+     */
+    public function CheckTalkbackSupport(): bool
+    {
+        $cameraID = $this->ReadPropertyString('CameraID');
+        if ($cameraID === '') {
+            $this->LogMessage('Keine Protect-Camera-ID konfiguriert', KL_ERROR);
+            return false;
+        }
+
+        $token = $this->ProtectLogin();
+        if ($token === null) {
+            return false;
+        }
+
+        $bootstrap = $this->ProtectBootstrap($token);
+        if ($bootstrap === null) {
+            return false;
+        }
+
+        foreach (($bootstrap['cameras'] ?? []) as $camera) {
+            if (($camera['id'] ?? '') === $cameraID) {
+                $hasSpeaker = (bool) ($camera['featureFlags']['hasSpeaker'] ?? false);
+                $this->SendDebug(
+                    'Talkback',
+                    $hasSpeaker ? 'Kamera meldet Lautsprecher-Unterstützung' : 'Kamera meldet KEINE Lautsprecher-Unterstützung',
+                    0
+                );
+                return $hasSpeaker;
+            }
+        }
+
+        $this->LogMessage("Camera-ID {$cameraID} nicht im Protect-Bootstrap gefunden", KL_ERROR);
+        return false;
+    }
+
+    /**
+     * Sendet eine vorbereitete AAC-ADTS-Testdatei über den Talkback-Kanal —
+     * zum Nachweis, dass der Weg technisch funktioniert, bevor eine
+     * Live-Mikrofon-Übertragung gebaut wird. Erzeugen einer passenden
+     * Testdatei z. B. mit:
+     *   ffmpeg -f lavfi -i "sine=frequency=1000:duration=1" \
+     *          -ar 24000 -ac 1 -c:a aac -profile:a aac_low -f adts test.aac
+     */
+    public function SendTalkbackTestTone(): bool
+    {
+        $cameraID = $this->ReadPropertyString('CameraID');
+        $file     = $this->ReadPropertyString('TalkbackTestFile');
+
+        if ($cameraID === '' || $file === '') {
+            $this->LogMessage('Camera-ID oder Testdatei für Gegensprech-Test fehlt', KL_ERROR);
+            return false;
+        }
+        if (!is_readable($file)) {
+            $this->LogMessage("Testdatei nicht lesbar: {$file}", KL_ERROR);
+            return false;
+        }
+
+        $token = $this->ProtectLogin();
+        if ($token === null) {
+            return false;
+        }
+
+        $frames = $this->SplitAdtsFrames((string) file_get_contents($file));
+        if (count($frames) === 0) {
+            $this->LogMessage('Testdatei enthält keine gültigen ADTS-Frames (AAC-LC, 24 kHz, mono erwartet)', KL_ERROR);
+            return false;
+        }
+
+        $socket = $this->OpenTalkbackSocket($cameraID, $token);
+        if ($socket === null) {
+            return false;
+        }
+
+        // ~900 ms Stille vor dem eigentlichen Ton, damit der Lautsprecher
+        // beim Aufwecken nichts abschneidet.
+        usleep(900000);
+
+        foreach ($frames as $frame) {
+            $this->WebsocketSendBinary($socket, $frame);
+            usleep(42700); // 1024 Samples / 24000 Hz ≈ 42,7 ms pro AAC-Frame
+        }
+
+        fclose($socket);
+        $this->SendDebug('Talkback', 'Testton gesendet (' . count($frames) . ' Frames)', 0);
+        return true;
+    }
+
+    /**
+     * Baut die rohe WebSocket-Verbindung zum Talkback-Endpunkt auf
+     * (RFC-6455-Handshake von Hand, da IP-Symcon keinen WebSocket-Client
+     * mitbringt).
+     *
+     * @return resource|null
+     */
+    private function OpenTalkbackSocket(string $cameraID, string $token)
+    {
+        $host = $this->ReadPropertyString('Host');
+
+        $context = stream_context_create([
+            'ssl' => [
+                'verify_peer'      => false,
+                'verify_peer_name' => false,
+            ],
+        ]);
+
+        $socket = @stream_socket_client(
+            "ssl://{$host}:443",
+            $errno,
+            $errstr,
+            8,
+            STREAM_CLIENT_CONNECT,
+            $context
+        );
+        if ($socket === false) {
+            $this->LogMessage("Talkback: Verbindung fehlgeschlagen ({$errstr})", KL_ERROR);
+            return null;
+        }
+
+        $key  = base64_encode(random_bytes(16));
+        $path = "/proxy/protect/ws/talkback?speaker={$cameraID}";
+        $request = "GET {$path} HTTP/1.1\r\n"
+            . "Host: {$host}\r\n"
+            . "Upgrade: websocket\r\n"
+            . "Connection: Upgrade\r\n"
+            . "Sec-WebSocket-Key: {$key}\r\n"
+            . "Sec-WebSocket-Version: 13\r\n"
+            . "Origin: https://{$host}\r\n"
+            . "Cookie: TOKEN={$token}\r\n"
+            . "\r\n";
+
+        fwrite($socket, $request);
+        $response = fread($socket, 2048);
+
+        if ($response === false || strpos($response, ' 101 ') === false) {
+            $firstLine = strtok((string) $response, "\r\n");
+            $this->LogMessage('Talkback: WebSocket-Handshake abgelehnt — ' . ($firstLine !== false ? $firstLine : 'keine Antwort'), KL_ERROR);
+            fclose($socket);
+            return null;
+        }
+
+        return $socket;
+    }
+
+    /**
+     * Verschickt einen Binär-Frame über eine offene WebSocket-Verbindung.
+     * Client→Server-Frames MÜSSEN laut RFC 6455 maskiert sein.
+     *
+     * @param resource $socket
+     */
+    private function WebsocketSendBinary($socket, string $payload): void
+    {
+        $length = strlen($payload);
+        $mask   = random_bytes(4);
+
+        $frame = chr(0x82); // FIN-Bit + Opcode 0x2 (Binary)
+
+        if ($length <= 125) {
+            $frame .= chr($length | 0x80);
+        } elseif ($length <= 65535) {
+            $frame .= chr(126 | 0x80) . pack('n', $length);
+        } else {
+            $frame .= chr(127 | 0x80) . pack('J', $length);
+        }
+
+        $frame .= $mask;
+        for ($i = 0; $i < $length; $i++) {
+            $frame .= $payload[$i] ^ $mask[$i % 4];
+        }
+
+        fwrite($socket, $frame);
+    }
+
+    /**
+     * Zerlegt einen rohen ADTS-Bytestrom (AAC-LC) in einzelne Frames —
+     * jeder Frame wird als eigene WebSocket-Nachricht verschickt.
+     */
+    private function SplitAdtsFrames(string $data): array
+    {
+        $frames = [];
+        $length = strlen($data);
+        $pos    = 0;
+
+        while ($pos + 7 <= $length) {
+            if (ord($data[$pos]) !== 0xFF || (ord($data[$pos + 1]) & 0xF0) !== 0xF0) {
+                break; // kein gültiger ADTS-Sync an dieser Stelle
+            }
+
+            $frameLength = ((ord($data[$pos + 3]) & 0x03) << 11)
+                | (ord($data[$pos + 4]) << 3)
+                | (ord($data[$pos + 5]) >> 5);
+
+            if ($frameLength <= 0 || $pos + $frameLength > $length) {
+                break;
+            }
+
+            $frames[] = substr($data, $pos, $frameLength);
+            $pos += $frameLength;
+        }
+
+        return $frames;
     }
 }

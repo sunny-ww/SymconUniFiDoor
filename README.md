@@ -15,12 +15,23 @@ als Ersatz für das SIP-basierte DoorIP, das mit UniFi-Klingeln nicht funktionie
 | Livebild (optional) | Beliebiges bestehendes Bild-Medienobjekt (z. B. UniFi-Protect-Modul, Image Grabber) wird laufend übernommen — Fallback ist die G6-Snapshot-URL |
 | Tür öffnen | Aktion über die UniFi-Access-Developer-API |
 | Push | Benachrichtigung mit Sprungziel in die Türansicht |
+| Gegensprechen (experimentell) | Testton über den inoffiziellen Protect-Talkback-Kanal — siehe unten |
 
-### Was dieses Modul nicht kann
+### Gegensprechen — experimentell, unverifiziert
 
-**Gegensprechen.** Die G6 ist kein SIP-Gerät, und UniFi Protect bietet keinen
-dokumentierten Weg, von außen eine Audio-Session zur Klingel aufzubauen.
-Sprechen bleibt der Protect-App vorbehalten.
+Die G6 ist kein SIP-Gerät, und Ubiquiti dokumentiert keinen offiziellen Weg, von
+außen eine Audio-Session aufzubauen. Es gibt aber einen von der Protect-App selbst
+genutzten, undokumentierten WebSocket-Kanal
+(`wss://<Host>/proxy/protect/ws/talkback?speaker=<CameraID>`), den auch
+Community-Projekte wie `homebridge-unifi-protect` oder `go2rtc` nutzen. Bestätigt ist
+das bisher nur für reine Protect-Doorbells (G4 Doorbell Pro/Lite) — **ob die G6 Entry
+als UniFi-Access-Gerät denselben Kanal anbietet, ist offen** und muss am echten Gerät
+geprüft werden (siehe Einrichtung unten). Ubiquiti kann diesen Weg jederzeit ohne
+Vorwarnung ändern oder abschalten.
+
+Aktuell implementiert ist die Diagnose (Lautsprecher-Erkennung, Testton) — eine
+Live-Mikrofon-Übertragung für ein echtes Gespräch ist ein separater, größerer
+Ausbauschritt und noch nicht Teil des Moduls.
 
 **Live-Video im Browser** kommt nicht direkt aus Protect: RTSP spielt kein Browser ab.
 Wer Bewegtbild in der Visualisierung will, stellt go2rtc oder MediaMTX daneben und
@@ -89,6 +100,21 @@ IP-Symcon; die G6-Snapshot-URL wird in diesem Fall nicht mehr benötigt.
 
 Die Webhook-Adresse im Konfigurationsformular anzeigen lassen und in UniFi Protect
 im **Alarm Manager** als Ziel für das Klingel-Ereignis eintragen.
+
+### 5. Gegensprechen testen (optional, experimentell)
+
+1. Im Bereich *Gegensprechen* den lokalen Protect-Benutzernamen und -Passwort
+   eintragen (derselbe Kontotyp wie für das „Unifi Protect"-Modul)
+2. *Protect-Kameras auflisten* klicken, die G6 anhand des Namens identifizieren
+   und ihre ID unter *Protect-Camera-ID der G6* eintragen
+3. *Lautsprecher-Unterstützung prüfen* klicken — meldet die G6 keinen Lautsprecher,
+   funktioniert der Talkback-Kanal auf diesem Gerät vermutlich nicht
+4. Testdatei erzeugen: `ffmpeg -f lavfi -i "sine=frequency=1000:duration=1" -ar 24000 -ac 1 -c:a aac -profile:a aac_low -f adts test.aac`
+5. Pfad zur Datei eintragen, *Testton senden* klicken und an der Tür lauschen
+
+Kommt kein Ton an, ist entweder der Talkback-Kanal für UniFi-Access-Geräte nicht
+verfügbar, oder die Camera-ID/Zugangsdaten stimmen nicht — Details stehen im
+Meldungen-Log der Instanz.
 
 ## Veröffentlichung im Module Store
 
