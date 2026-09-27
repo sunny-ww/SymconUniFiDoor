@@ -30,7 +30,7 @@ class UniFiDoor extends IPSModule
         $this->RegisterPropertyInteger('RingResetSeconds', 10);
         $this->RegisterPropertyInteger('NotifyTargetID', 0);
         $this->RegisterPropertyInteger('VisuInstanceID', 0);
-        $this->RegisterPropertyString('SwitchPageName', '');
+        $this->RegisterPropertyBoolean('AutoOpenOnRing', false);
 
         // --- Gegensprechen (offizielle Protect Integration API) ---
         $this->RegisterPropertyString('ProtectApiKey', '');
@@ -356,20 +356,23 @@ class UniFiDoor extends IPSModule
 
         $visu = $this->ReadPropertyInteger('VisuInstanceID');
         if ($visu > 0 && IPS_InstanceExists($visu)) {
-            @WFC_PushNotification(
-                $visu,
-                'Es klingelt',
-                IPS_GetName($this->InstanceID),
-                'alarm',
-                $this->DetermineRingTargetID()
-            );
+            $targetID = $this->DetermineRingTargetID();
 
-            // Für ein fest montiertes WebFront-Wandpanel: springt dort ohne
-            // jedes Antippen direkt zum konfigurierten Kamera-Reiter und
-            // weckt es dabei aus dem Idle-Zustand auf.
-            $pageName = $this->ReadPropertyString('SwitchPageName');
-            if ($pageName !== '') {
-                @WFC_SwitchPage($visu, $pageName);
+            // Neue Kachel Visualisierung (Symcon >= 7.0) zuerst versuchen,
+            // bei Fehlschlag auf die alte WebFront Visualisierung
+            // zurückfallen — je nachdem, welcher Visualisierungstyp unter
+            // VisuInstanceID hinterlegt ist.
+            $posted = @VISU_PostNotification($visu, 'Es klingelt', IPS_GetName($this->InstanceID), 'Alarm', $targetID);
+            if ($posted === false) {
+                @WFC_PushNotification($visu, 'Es klingelt', IPS_GetName($this->InstanceID), 'alarm', $targetID);
+            }
+
+            // Für ein fest montiertes Wandpanel (Kiosk-Modus): öffnet das
+            // Zielobjekt live auf allen offenen Geräten dieser Visualisierung
+            // — als Vollbild-Kachel, ganz ohne Antippen. Braucht die neue
+            // Kachel Visualisierung (Symcon >= 8.2).
+            if ($this->ReadPropertyBoolean('AutoOpenOnRing')) {
+                @VISU_OpenObject($visu, $targetID, '');
             }
         }
 
