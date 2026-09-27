@@ -137,10 +137,12 @@ http://<IP-der-Kamera>/snap.jpeg
 Die Webhook-Adresse im Konfigurationsformular anzeigen lassen und in UniFi Protect
 im **Alarm Manager** als Ziel für das Klingel-Ereignis eintragen.
 
-Optional, nur bei einem fest montierten WebFront-Wandpanel: Im WebFront-Editor den
-Reiter mit dem Kamerabild öffnen, den dort in Klammern angezeigten Namen (z. B.
-„item1234") unter *WebFront-Reiter für automatischen Sprung* eintragen — das Panel
-schaltet beim Klingeln dann von selbst dorthin um.
+Optional, nur bei einem fest montierten WebFront-Wandpanel: WebFront-Instanz öffnen
+→ Reiter *Editor* → *WebFront Editor öffnen* → zum gewünschten Navigationsfeld
+(Kamera-Reiter) → Stift-Symbol klicken. In der Titelzeile des sich öffnenden Dialogs
+steht z. B. „Konfiguration (item1234)" — diese Zeichenfolge (inkl. „item") unter
+*WebFront-Reiter für automatischen Sprung* eintragen. Das Panel schaltet beim
+Klingeln dann von selbst dorthin um, auch aus dem Ruhezustand heraus.
 
 ### 5. Protect-API-Key einrichten (für Gegensprechen und/oder Kamerabild)
 
