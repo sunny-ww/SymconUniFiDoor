@@ -189,13 +189,17 @@
                     "caption": "Visualisierungs-Instanz für Push"
                 },
                 {
-                    "type": "SelectObject",
+                    "type": "SelectMedia",
                     "name": "NotifyTargetID",
-                    "caption": "Sprungziel beim Antippen der Push-Meldung (optional)"
+                    "caption": "Kamera-Medienobjekt für Push-Ziel (optional)"
                 },
                 {
                     "type": "Label",
-                    "caption": "Ohne Auswahl springt der Tap automatisch zum eigenen Türkamera-Snapshot — der wird beim Klingeln immer zuerst aktualisiert, du siehst also direkt, wer draußen steht. Hier nur etwas eintragen, wenn stattdessen z. B. eine bestimmte Kamera-Instanz mit Live-Video geöffnet werden soll."
+                    "caption": "Ohne Auswahl springt der Tap automatisch zum eigenen Türkamera-Snapshot — der wird beim Klingeln immer zuerst aktualisiert, du siehst also direkt, wer draußen steht. Hier stattdessen ein anderes Bild-Medienobjekt wählen, z. B. das einer UniFi-Protect-Modul-Instanz."
+                },
+                {
+                    "type": "Label",
+                    "caption": "WICHTIG: Ein Livebild direkt im Benachrichtigungs-Banner (ohne Antippen) unterstützt die Symcon-App nicht — nur Titel und Text erscheinen dort. Das gewählte Medienobjekt muss außerdem in einer WebFront-Kachel platziert sein, sonst scheitert der Sprung beim Antippen mit „TargetID is too deep\" lautlos."
                 }
             ]
         }

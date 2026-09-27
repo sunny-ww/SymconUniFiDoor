@@ -349,11 +349,17 @@ class UniFiDoor extends IPSModule
 
     /**
      * Bestimmt, wohin die Push-Meldung beim Antippen springt. Ist explizit
-     * ein Sprungziel gesetzt, hat das Vorrang. Ohne Angabe springt es direkt
-     * zum eigenen Snapshot-Medienobjekt — das wurde in HandleRing() kurz
-     * zuvor aktualisiert, zeigt also sofort, wer an der Tür steht, egal aus
-     * welcher der drei möglichen Quellen (Livebild-Medienobjekt, offizielle
-     * Protect-API, G6-Snapshot-URL) das Bild stammt.
+     * ein Kamera-Medienobjekt gesetzt, hat das Vorrang. Ohne Angabe springt
+     * es direkt zum eigenen Snapshot-Medienobjekt — das wurde in
+     * HandleRing() kurz zuvor aktualisiert, zeigt also sofort, wer an der
+     * Tür steht, egal aus welcher der drei möglichen Quellen
+     * (Livebild-Medienobjekt, offizielle Protect-API, G6-Snapshot-URL) das
+     * Bild stammt.
+     *
+     * Einschränkung der Symcon-App (nicht dieses Moduls): Ein Bild direkt im
+     * Benachrichtigungs-Banner ohne Antippen ist nicht möglich, und das
+     * Zielobjekt muss in einer WebFront-Kachel platziert sein — sonst
+     * scheitert der Sprung beim Antippen lautlos mit „TargetID is too deep".
      */
     private function DetermineRingTargetID(): int
     {
