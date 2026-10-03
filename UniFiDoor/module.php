@@ -33,6 +33,7 @@ class UniFiDoor extends IPSModule
         $this->RegisterPropertyInteger('VisuInstanceID', 0);
         $this->RegisterPropertyBoolean('AutoOpenOnRing', false);
         $this->RegisterPropertyInteger('LiveImagePopupTimeoutSeconds', 60);
+        $this->RegisterPropertyString('WebhookSecret', '');
 
         // --- Gegensprechen (offizielle Protect Integration API) ---
         $this->RegisterPropertyString('ProtectApiKey', '');
@@ -53,6 +54,9 @@ class UniFiDoor extends IPSModule
 
         // Timer für das optionale, fortlaufende Livebild
         $this->RegisterTimer('RefreshLiveImage', 0, 'UFD_RefreshSnapshot($_IPS[\'TARGET\']);');
+
+        // Timer, der den Schalter "Tür öffnen" nach dem Entriegeln zurücksetzt
+        $this->RegisterTimer('ResetUnlock', 0, 'UFD_ResetUnlock($_IPS[\'TARGET\']);');
 
         // Timer zum automatischen Schließen des beim Klingeln geöffneten
         // Livebild-Popups
@@ -191,7 +195,10 @@ class UniFiDoor extends IPSModule
     {
         switch ($Ident) {
             case 'Unlock':
-                $this->Unlock();
+                if ($this->Unlock()) {
+                    $this->SetValue('Unlock', true);
+                    $this->SetTimerInterval('ResetUnlock', 5000);
+                }
                 break;
             default:
                 throw new Exception('Unbekannte Aktion: ' . $Ident);
@@ -306,6 +313,15 @@ class UniFiDoor extends IPSModule
     }
 
     /**
+     * Setzt den Schalter "Tür öffnen" kurz nach dem Entriegeln zurück.
+     */
+    public function ResetUnlock(): void
+    {
+        $this->SetValue('Unlock', false);
+        $this->SetTimerInterval('ResetUnlock', 0);
+    }
+
+    /**
      * Wird vom Timer aufgerufen und setzt den Klingel-Status zurück.
      */
     public function ResetRing(): void
@@ -320,6 +336,13 @@ class UniFiDoor extends IPSModule
 
     protected function ProcessHookData()
     {
+        $secret = $this->ReadPropertyString('WebhookSecret');
+        if ($secret !== '' && !hash_equals($secret, (string) ($_GET['token'] ?? ''))) {
+            http_response_code(403);
+            echo 'forbidden';
+            return;
+        }
+
         $raw = file_get_contents('php://input');
         $this->SendDebug('Webhook', $raw, 0);
 
@@ -357,7 +380,13 @@ class UniFiDoor extends IPSModule
 
     private function HandleRing(): void
     {
-        $this->RefreshSnapshot();
+        // Zeigt das Push-Ziel den eigenen Snapshot, muss er vorher aktuell
+        // sein. Ist ein externes Medienobjekt (z. B. Stream) das Ziel, geht
+        // das Popup sofort auf und der Snapshot wird danach nachgezogen.
+        $snapshotFirst = $this->ReadPropertyInteger('NotifyTargetID') === 0;
+        if ($snapshotFirst) {
+            $this->RefreshSnapshot();
+        }
 
         $this->SetValue('Ring', true);
         $this->SetValue('LastRing', time());
@@ -385,6 +414,10 @@ class UniFiDoor extends IPSModule
                 $timeout = $this->ReadPropertyInteger('LiveImagePopupTimeoutSeconds');
                 $this->SetTimerInterval('CloseLiveImagePopup', $timeout > 0 ? $timeout * 1000 : 0);
             }
+        }
+
+        if (!$snapshotFirst) {
+            $this->RefreshSnapshot();
         }
 
         $this->SendDebug('Ring', 'Klingel-Ereignis verarbeitet', 0);
@@ -732,7 +765,8 @@ class UniFiDoor extends IPSModule
      */
     public function GetWebhookURL(): string
     {
-        return self::WEBHOOK_PREFIX . '/' . $this->InstanceID;
+        $secret = $this->ReadPropertyString('WebhookSecret');
+        return self::WEBHOOK_PREFIX . '/' . $this->InstanceID . ($secret !== '' ? '?token=' . rawurlencode($secret) : '');
     }
 
     // =====================================================================
