@@ -6,3 +6,6 @@ Thumbs.db
 
 # Enthält private Infrastrukturdetails (IP-Adressen, Instanz-IDs, Stream-Keys)
 CLAUDE.md
+
+# Lokale Kopie der Symcon-Doku (siehe CLAUDE.md)
+symcon-docs/
