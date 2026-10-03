@@ -33,7 +33,6 @@ class UniFiDoor extends IPSModule
         $this->RegisterPropertyInteger('VisuInstanceID', 0);
         $this->RegisterPropertyBoolean('AutoOpenOnRing', false);
         $this->RegisterPropertyInteger('LiveImagePopupTimeoutSeconds', 60);
-        $this->RegisterPropertyString('WebhookSecret', '');
 
         // --- Gegensprechen (offizielle Protect Integration API) ---
         $this->RegisterPropertyString('ProtectApiKey', '');
@@ -336,13 +335,6 @@ class UniFiDoor extends IPSModule
 
     protected function ProcessHookData()
     {
-        $secret = $this->ReadPropertyString('WebhookSecret');
-        if ($secret !== '' && !hash_equals($secret, (string) ($_GET['token'] ?? ''))) {
-            http_response_code(403);
-            echo 'forbidden';
-            return;
-        }
-
         $raw = file_get_contents('php://input');
         $this->SendDebug('Webhook', $raw, 0);
 
@@ -380,13 +372,7 @@ class UniFiDoor extends IPSModule
 
     private function HandleRing(): void
     {
-        // Zeigt das Push-Ziel den eigenen Snapshot, muss er vorher aktuell
-        // sein. Ist ein externes Medienobjekt (z. B. Stream) das Ziel, geht
-        // das Popup sofort auf und der Snapshot wird danach nachgezogen.
-        $snapshotFirst = $this->ReadPropertyInteger('NotifyTargetID') === 0;
-        if ($snapshotFirst) {
-            $this->RefreshSnapshot();
-        }
+        $this->RefreshSnapshot();
 
         $this->SetValue('Ring', true);
         $this->SetValue('LastRing', time());
@@ -414,10 +400,6 @@ class UniFiDoor extends IPSModule
                 $timeout = $this->ReadPropertyInteger('LiveImagePopupTimeoutSeconds');
                 $this->SetTimerInterval('CloseLiveImagePopup', $timeout > 0 ? $timeout * 1000 : 0);
             }
-        }
-
-        if (!$snapshotFirst) {
-            $this->RefreshSnapshot();
         }
 
         $this->SendDebug('Ring', 'Klingel-Ereignis verarbeitet', 0);
@@ -765,8 +747,7 @@ class UniFiDoor extends IPSModule
      */
     public function GetWebhookURL(): string
     {
-        $secret = $this->ReadPropertyString('WebhookSecret');
-        return self::WEBHOOK_PREFIX . '/' . $this->InstanceID . ($secret !== '' ? '?token=' . rawurlencode($secret) : '');
+        return self::WEBHOOK_PREFIX . '/' . $this->InstanceID;
     }
 
     // =====================================================================

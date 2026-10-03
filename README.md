@@ -45,9 +45,6 @@ sich das Popup auch ohne Antippen von selbst wieder. Da Symcon keine Close-Funkt
 bietet, geschieht das über `VISU_Reload()` — die Visualisierung wird auf allen
 verbundenen Geräten neu geladen.
 
-Optional lässt sich der Webhook mit einem **Webhook-Geheimnis** absichern: Dann löst er nur
-aus, wenn die Adresse im Alarm Manager mit `?token=<Geheimnis>` endet.
-
 ### Gegensprechen
 
 Die G6 ist kein SIP-Gerät, aber UniFi Protect bietet seit einiger Zeit eine
