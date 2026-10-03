@@ -243,7 +243,18 @@
                 },
                 {
                     "type": "Label",
-                    "caption": "Öffnet beim Klingeln das oben gewählte Kamera-Medienobjekt live als Vollbild-Kachel auf allen gerade geöffneten Geräten dieser Visualisierung — z. B. ein fest montiertes Wandpanel im Kiosk-Modus."
+                    "caption": "Öffnet beim Klingeln das oben gewählte Kamera-Medienobjekt live als Vollbild-Kachel auf allen gerade geöffneten Geräten dieser Visualisierung — z. B. ein fest montiertes Wandpanel im Kiosk-Modus. Das Popup muss danach angetippt/geschlossen werden, bevor der „Tür öffnen"-Schalter in der normalen Ansicht bedient werden kann."
+                },
+                {
+                    "type": "NumberSpinner",
+                    "name": "LiveImagePopupTimeoutSeconds",
+                    "caption": "Livebild-Popup automatisch schließen nach (Sekunden, 0 = nie)",
+                    "minimum": 0,
+                    "maximum": 600
+                },
+                {
+                    "type": "Label",
+                    "caption": "Gilt nur in Verbindung mit „Bei Klingeln automatisch öffnen\". Technisch wird die Kachel Visualisierung dafür neu geladen (VISU_Reload) — das betrifft alle gerade verbundenen Geräte dieser Visualisierung, nicht nur das Wandpanel."
                 }
             ]
         }

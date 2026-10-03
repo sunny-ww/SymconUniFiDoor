@@ -38,7 +38,12 @@ Wer eine echte "Livebild, bevor man reagiert"-Erfahrung will (wie früher bei Do
 SIP-Early-Media), erreicht das über ein **fest montiertes Wandpanel mit der neuen Kachel
 Visualisierung**: Mit dem Haken *Bei Klingeln automatisch öffnen* unten zeigt das Panel
 beim Klingeln automatisch das Kamerabild — ganz ohne SIP, ohne Antippen, ohne manuelle
-Reiter-Suche.
+Reiter-Suche. Das Popup zeigt bewusst nur das Livebild; zum Öffnen der Tür muss es erst
+geschlossen und dann der Schalter *Tür öffnen* in der normalen Ansicht bedient werden.
+Über *Livebild-Popup automatisch schließen nach* (Standard 60 Sekunden, 0 = nie) schließt
+sich das Popup auch ohne Antippen von selbst wieder. Da Symcon keine Close-Funktion
+bietet, geschieht das über `VISU_Reload()` — die Visualisierung wird auf allen
+verbundenen Geräten neu geladen.
 
 ### Gegensprechen
 

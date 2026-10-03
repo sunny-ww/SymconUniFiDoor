@@ -14,10 +14,6 @@ class UniFiDoor extends IPSModule
     {
         parent::Create();
 
-        // Eigene Kachel-Darstellung (HTML-SDK): Livebild + "Tür öffnen" in
-        // einer gemeinsamen Ansicht statt der generischen Listendarstellung.
-        $this->SetVisualizationType(1);
-
         // --- Verbindung ---
         $this->RegisterPropertyString('Host', '');
         $this->RegisterPropertyInteger('AccessPort', 12445);
@@ -36,6 +32,7 @@ class UniFiDoor extends IPSModule
         $this->RegisterPropertyInteger('NotifyTargetID', 0);
         $this->RegisterPropertyInteger('VisuInstanceID', 0);
         $this->RegisterPropertyBoolean('AutoOpenOnRing', false);
+        $this->RegisterPropertyInteger('LiveImagePopupTimeoutSeconds', 60);
 
         // --- Gegensprechen (offizielle Protect Integration API) ---
         $this->RegisterPropertyString('ProtectApiKey', '');
@@ -56,16 +53,15 @@ class UniFiDoor extends IPSModule
 
         // Timer für das optionale, fortlaufende Livebild
         $this->RegisterTimer('RefreshLiveImage', 0, 'UFD_RefreshSnapshot($_IPS[\'TARGET\']);');
+
+        // Timer zum automatischen Schließen des beim Klingeln geöffneten
+        // Livebild-Popups
+        $this->RegisterTimer('CloseLiveImagePopup', 0, 'UFD_CloseLiveImagePopup($_IPS[\'TARGET\']);');
     }
 
     public function ApplyChanges()
     {
         parent::ApplyChanges();
-
-        // Muss auch hier stehen, nicht nur in Create(): Create() läuft nur
-        // beim allerersten Anlegen einer Instanz, nicht bei Modul-Updates
-        // bereits bestehender Instanzen.
-        $this->SetVisualizationType(1);
 
         $this->RegisterHook(self::WEBHOOK_PREFIX . '/' . $this->InstanceID);
         $this->RegisterMediaSnapshot();
@@ -203,35 +199,6 @@ class UniFiDoor extends IPSModule
     }
 
     /**
-     * Eigene Kachel-Darstellung (HTML-SDK): zeigt das aktuelle Türkamera-Bild
-     * und einen "Tür öffnen"-Button in einer gemeinsamen Ansicht, statt der
-     * generischen Symcon-Listendarstellung. Das Bild kommt über den eigenen
-     * Webhook-Endpunkt (GET), nicht über Symcons internen — undokumentierten
-     * — Medien-Auslieferungspfad.
-     *
-     * EXPERIMENTELL: Live-Video (Stream) ist hier bewusst noch nicht
-     * eingebunden — ein <video>-Tag kann kein rtsps:// abspielen, und wie
-     * Symcon seinen eigenen Stream intern auf Browser/App ausliefert
-     * (vermutlich über eine interne go2rtc-Proxy-Adresse), ist nicht
-     * dokumentiert. Das bräuchte weitere Recherche/Live-Tests.
-     */
-    public function GetVisualizationTile()
-    {
-        $imageURL = self::WEBHOOK_PREFIX . '/' . $this->InstanceID;
-
-        return '
-            <div style="text-align:center; padding:8px;">
-                <img src="' . htmlspecialchars($imageURL) . '" style="width:100%; max-width:100%; border-radius:8px;" />
-                <div style="margin-top:12px;">
-                    <button onclick="requestAction(\'Unlock\', true)" style="font-size:16px; padding:10px 28px; border-radius:6px;">
-                        Tür öffnen
-                    </button>
-                </div>
-            </div>
-        ';
-    }
-
-    /**
      * Entriegelt die Tür über die UniFi Access Developer API.
      * Die Entriegelungsdauer wird in UniFi Access konfiguriert.
      */
@@ -353,19 +320,6 @@ class UniFiDoor extends IPSModule
 
     protected function ProcessHookData()
     {
-        // GET-Aufrufe liefern das aktuelle Türkamera-Bild aus — genutzt von
-        // der eigenen Kachel-Darstellung (GetVisualizationTile()), da der
-        // interne Medien-Auslieferungspfad von Symcon nicht dokumentiert
-        // ist. Dieser Endpunkt gehört uns, also kein Rateproblem.
-        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
-            $mediaID = @$this->GetIDForIdent('Snapshot');
-            $content = $mediaID !== false ? IPS_GetMediaContent($mediaID) : '';
-            header('Content-Type: image/jpeg');
-            header('Cache-Control: no-store');
-            echo $content !== '' ? base64_decode($content) : '';
-            return;
-        }
-
         $raw = file_get_contents('php://input');
         $this->SendDebug('Webhook', $raw, 0);
 
@@ -427,10 +381,36 @@ class UniFiDoor extends IPSModule
             // — als Vollbild-Kachel, ganz ohne Antippen.
             if ($this->ReadPropertyBoolean('AutoOpenOnRing')) {
                 @VISU_OpenObject($visu, $targetID, '');
+
+                $timeout = $this->ReadPropertyInteger('LiveImagePopupTimeoutSeconds');
+                $this->SetTimerInterval('CloseLiveImagePopup', $timeout > 0 ? $timeout * 1000 : 0);
             }
         }
 
         $this->SendDebug('Ring', 'Klingel-Ereignis verarbeitet', 0);
+    }
+
+    /**
+     * Schließt das beim Klingeln automatisch geöffnete Livebild-Popup wieder
+     * — läuft über den Timer CloseLiveImagePopup, Intervall über
+     * LiveImagePopupTimeoutSeconds einstellbar (0 = nie automatisch
+     * schließen, nur manuell per Antippen).
+     *
+     * Es gibt keine VISU_CloseObject()-Funktion (live geprüft). Verifiziert am
+     * Wandpanel: VISU_Reload() lädt die Kachel Visualisierung neu und bringt
+     * damit alle Clients zurück zur Standardansicht. Nebenwirkung: das gilt
+     * für alle gerade verbundenen Geräte dieser Visualisierung.
+     */
+    public function CloseLiveImagePopup(): void
+    {
+        $this->SetTimerInterval('CloseLiveImagePopup', 0);
+
+        $visu = $this->ReadPropertyInteger('VisuInstanceID');
+        if ($visu <= 0 || !IPS_InstanceExists($visu)) {
+            return;
+        }
+
+        @VISU_Reload($visu);
     }
 
     /**
