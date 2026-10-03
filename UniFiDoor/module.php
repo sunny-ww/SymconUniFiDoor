@@ -461,11 +461,15 @@ class UniFiDoor extends IPSModule
         $apiKey   = $this->ReadPropertyString('ProtectApiKey');
         $cameraID = $this->ReadPropertyString('CameraID');
         if ($apiKey !== '' && $cameraID !== '') {
-            $image = $this->FetchOfficialSnapshot($cameraID);
+            $host  = $this->ReadPropertyString('Host');
+            $image = $this->FetchImage(
+                "https://{$host}/proxy/protect/integration/v1/cameras/{$cameraID}/snapshot?highQuality=true",
+                ['X-API-Key: ' . $apiKey],
+                8,
+                'Offizielle API'
+            );
             if ($image !== null) {
-                $mediaID = $this->GetIDForIdent('Snapshot');
-                IPS_SetMediaContent($mediaID, base64_encode($image));
-                IPS_SendMediaEvent($mediaID);
+                $this->StoreSnapshot($image);
                 return true;
             }
             // Bei Fehlschlag auf die Snapshot-URL zurückfallen, statt ganz zu scheitern.
@@ -476,58 +480,49 @@ class UniFiDoor extends IPSModule
             return false;
         }
 
+        $image = $this->FetchImage($url, [], 5, 'Snapshot-URL');
+        if ($image === null) {
+            return false;
+        }
+
+        $this->StoreSnapshot($image);
+        return true;
+    }
+
+    /**
+     * Lädt ein Bild per HTTP(S) (selbstsigniertes UniFi-Zertifikat erlaubt).
+     *
+     * @param string[] $headers
+     * @return string|null Rohe Bild-Bytes oder null bei Fehlschlag.
+     */
+    private function FetchImage(string $url, array $headers, int $timeout, string $label): ?string
+    {
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_SSL_VERIFYPEER => false,
             CURLOPT_SSL_VERIFYHOST => false,
-            CURLOPT_TIMEOUT        => 5,
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_TIMEOUT        => $timeout,
+            CURLOPT_HTTPHEADER     => $headers,
         ]);
         $image = curl_exec($ch);
         $code  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
         if ($image === false || $code !== 200 || $image === '') {
-            $this->SendDebug('Snapshot', "Fehlgeschlagen (HTTP {$code})", 0);
-            return false;
-        }
-
-        $mediaID = $this->GetIDForIdent('Snapshot');
-        IPS_SetMediaContent($mediaID, base64_encode($image));
-        IPS_SendMediaEvent($mediaID);
-        return true;
-    }
-
-    /**
-     * Holt einen Snapshot über die offizielle Protect Integration API —
-     * bevorzugt gegenüber dem anonymen G6-Snapshot, da authentifiziert und
-     * ohne Extra-Konfiguration an der Kamera selbst.
-     *
-     * @return string|null Rohe JPEG-Bytes oder null bei Fehlschlag.
-     */
-    private function FetchOfficialSnapshot(string $cameraID): ?string
-    {
-        $host = $this->ReadPropertyString('Host');
-        $key  = $this->ReadPropertyString('ProtectApiKey');
-
-        $ch = curl_init("https://{$host}/proxy/protect/integration/v1/cameras/{$cameraID}/snapshot?highQuality=true");
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => false,
-            CURLOPT_TIMEOUT        => 8,
-            CURLOPT_HTTPHEADER     => ['X-API-Key: ' . $key],
-        ]);
-        $image = curl_exec($ch);
-        $code  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($image === false || $code !== 200 || $image === '') {
-            $this->SendDebug('Snapshot', "Offizielle API fehlgeschlagen (HTTP {$code})", 0);
+            $this->SendDebug('Snapshot', "{$label} fehlgeschlagen (HTTP {$code})", 0);
             return null;
         }
 
         return $image;
+    }
+
+    private function StoreSnapshot(string $jpeg): void
+    {
+        $mediaID = $this->GetIDForIdent('Snapshot');
+        IPS_SetMediaContent($mediaID, base64_encode($jpeg));
+        IPS_SendMediaEvent($mediaID);
     }
 
     private function RegisterMediaSnapshot(): void
@@ -659,6 +654,7 @@ class UniFiDoor extends IPSModule
             // UniFi-Konsolen nutzen ein selbstsigniertes Zertifikat
             CURLOPT_SSL_VERIFYPEER => false,
             CURLOPT_SSL_VERIFYHOST => false,
+            CURLOPT_CONNECTTIMEOUT => 3,
             CURLOPT_TIMEOUT        => 8,
             CURLOPT_HTTPHEADER     => [
                 'Authorization: Bearer ' . $token,
