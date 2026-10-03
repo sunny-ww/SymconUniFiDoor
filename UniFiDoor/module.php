@@ -660,22 +660,37 @@ class UniFiDoor extends IPSModule
             return false;
         }
 
-        $url = sprintf('https://%s:%d%s', $host, $port, $path);
+        return $this->jsonRequest(
+            sprintf('https://%s:%d%s', $host, $port, $path),
+            $method,
+            ['Authorization: Bearer ' . $token],
+            $body,
+            'API',
+            'API-Token abgelehnt (HTTP %d). Berechtigungen prüfen.'
+        );
+    }
 
+    /**
+     * Gemeinsamer JSON-Request für die Access- und die Protect-API
+     * (selbstsigniertes UniFi-Zertifikat erlaubt).
+     *
+     * @param string[] $authHeaders
+     * @return array|false
+     */
+    private function jsonRequest(string $url, string $method, array $authHeaders, ?array $body, string $label, string $authError)
+    {
         $ch = curl_init($url);
         $options = [
             CURLOPT_CUSTOMREQUEST  => $method,
             CURLOPT_RETURNTRANSFER => true,
-            // UniFi-Konsolen nutzen ein selbstsigniertes Zertifikat
             CURLOPT_SSL_VERIFYPEER => false,
             CURLOPT_SSL_VERIFYHOST => false,
             CURLOPT_CONNECTTIMEOUT => 3,
             CURLOPT_TIMEOUT        => 8,
-            CURLOPT_HTTPHEADER     => [
-                'Authorization: Bearer ' . $token,
+            CURLOPT_HTTPHEADER     => array_merge($authHeaders, [
                 'Accept: application/json',
                 'Content-Type: application/json',
-            ],
+            ]),
         ];
         if ($body !== null) {
             $options[CURLOPT_POSTFIELDS] = json_encode($body);
@@ -687,20 +702,21 @@ class UniFiDoor extends IPSModule
         $error    = curl_error($ch);
         curl_close($ch);
 
-        $this->SendDebug('API ' . $method, $path . ' → HTTP ' . $code, 0);
+        $path = parse_url($url, PHP_URL_PATH) ?: $url;
+        $this->SendDebug($label . ' ' . $method, $path . ' → HTTP ' . $code, 0);
 
         if ($response === false) {
-            $this->LogMessage("API-Fehler: {$error}", KL_ERROR);
+            $this->LogMessage("{$label}-Fehler bei {$path}: {$error}", KL_ERROR);
             return false;
         }
 
         if ($code === 401 || $code === 403) {
-            $this->LogMessage("API-Token abgelehnt (HTTP {$code}). Berechtigungen prüfen.", KL_ERROR);
+            $this->LogMessage(sprintf($authError, $code), KL_ERROR);
             return false;
         }
 
         if ($code < 200 || $code >= 300) {
-            $this->LogMessage("API antwortete mit HTTP {$code}: {$response}", KL_ERROR);
+            $this->LogMessage("{$label} antwortete mit HTTP {$code}: {$response}", KL_ERROR);
             return false;
         }
 
@@ -775,49 +791,14 @@ class UniFiDoor extends IPSModule
             return false;
         }
 
-        $url = "https://{$host}/proxy/protect/integration{$path}";
-
-        $ch = curl_init($url);
-        $options = [
-            CURLOPT_CUSTOMREQUEST  => $method,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => false,
-            CURLOPT_TIMEOUT        => 8,
-            CURLOPT_HTTPHEADER     => [
-                'X-API-Key: ' . $key,
-                'Accept: application/json',
-                'Content-Type: application/json',
-            ],
-        ];
-        if ($body !== null) {
-            $options[CURLOPT_POSTFIELDS] = json_encode($body);
-        }
-        curl_setopt_array($ch, $options);
-
-        $response = curl_exec($ch);
-        $code     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        $this->SendDebug('Protect-API ' . $method, $path . ' → HTTP ' . $code, 0);
-
-        if ($response === false) {
-            $this->LogMessage("Protect-API-Fehler bei {$path}", KL_ERROR);
-            return false;
-        }
-
-        if ($code === 401 || $code === 403) {
-            $this->LogMessage("Protect-API-Key abgelehnt (HTTP {$code}). Key auf der UniFi-Konsole unter Einstellungen → Integrations prüfen.", KL_ERROR);
-            return false;
-        }
-
-        if ($code < 200 || $code >= 300) {
-            $this->LogMessage("Protect-API antwortete mit HTTP {$code}: {$response}", KL_ERROR);
-            return false;
-        }
-
-        $decoded = json_decode((string) $response, true);
-        return is_array($decoded) ? $decoded : [];
+        return $this->jsonRequest(
+            "https://{$host}/proxy/protect/integration{$path}",
+            $method,
+            ['X-API-Key: ' . $key],
+            $body,
+            'Protect-API',
+            'Protect-API-Key abgelehnt (HTTP %d). Key auf der UniFi-Konsole unter Einstellungen → Integrations prüfen.'
+        );
     }
 
     /**
