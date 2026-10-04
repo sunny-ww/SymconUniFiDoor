@@ -4,8 +4,8 @@
     "name": "UniFiDoor",
     "url": "https://github.com/sunny-ww/SymconUniFiDoor",
     "version": "1.0",
-    "build": 1,
-    "date": 1790460000,
+    "build": 2,
+    "date": 1791072000,
     "compatibility": {
         "version": "8.2"
     }

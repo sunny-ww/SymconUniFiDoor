@@ -243,7 +243,18 @@
                 },
                 {
                     "type": "Label",
-                    "caption": "Öffnet beim Klingeln das oben gewählte Kamera-Medienobjekt live als Vollbild-Kachel auf allen gerade geöffneten Geräten dieser Visualisierung — z. B. ein fest montiertes Wandpanel im Kiosk-Modus. Das Popup muss danach angetippt/geschlossen werden, bevor der Schalter „Tür öffnen\" in der normalen Ansicht bedient werden kann."
+                    "name": "AutoOpenInfo",
+                    "caption": "Öffnet beim Klingeln auf allen gerade verbundenen Geräten der Visualisierung das Kamera-Popup. Ab Symcon 9.1 kann dafür die interaktive Vollbildansicht mit Türöffnen-Schaltfläche verwendet werden."
+                },
+                {
+                    "type": "CheckBox",
+                    "name": "InteractivePopup",
+                    "caption": "Ab Symcon 9.1 interaktives Popup mit Türöffnen-Schaltfläche verwenden"
+                },
+                {
+                    "type": "Label",
+                    "name": "InteractivePopupInfo",
+                    "caption": "Die interaktive Vollbildansicht mit Türöffnen-Schaltfläche erfordert Symcon 9.1 oder neuer. Unter dieser Version bleibt das Kamera-Popup unverändert."
                 },
                 {
                     "type": "NumberSpinner",
@@ -254,7 +265,7 @@
                 },
                 {
                     "type": "Label",
-                    "caption": "Gilt nur in Verbindung mit „Bei Klingeln automatisch öffnen\". Technisch wird die Kachel Visualisierung dafür neu geladen (VISU_Reload) — das betrifft alle gerade verbundenen Geräte dieser Visualisierung, nicht nur das Wandpanel."
+                    "caption": "Gilt nur in Verbindung mit „Bei Klingeln automatisch öffnen\". Im interaktiven Popup navigiert der Timer die geöffneten Ansichten zurück zur Modul-Kategorie. Im bisherigen Popup wird die Kachel Visualisierung neu geladen."
                 }
             ]
         }

@@ -18,6 +18,7 @@ als Ersatz für das SIP-basierte DoorIP, das mit UniFi-Klingeln nicht funktionie
 | Tür-/Kamera-Auswahl | Per Radio-Button bzw. Dropdown, live aus der API befüllt — kein manuelles Eintippen von IDs nötig |
 | Push | Benachrichtigung mit Sprungziel in die Türansicht (siehe Einschränkungen unten) — läuft über die neue **Kachel Visualisierung** (`VISU_PostNotification`), mit Fallback auf die alte **WebFront Visualisierung** (`WFC_PushNotification`) |
 | Wandpanel-Autoöffnen (optional) | Fest montiertes Panel mit Kachel Visualisierung zeigt beim Klingeln automatisch, ganz ohne Antippen, das Kamerabild als Vollbild-Kachel — via `VISU_OpenObject()` |
+| Interaktives Klingel-Popup (ab Symcon 9.1, optional) | Eigene HTML-SDK-Vollbildkachel mit Kamerabild und direkter Türöffnen-Schaltfläche. Unter Symcon 8.2 bis 9.0 bleibt das bisherige Medien-Popup verfügbar. |
 | Gegensprechen | Testton über die offizielle UniFi Protect Integration API — siehe unten |
 
 ### Push-Benachrichtigung — Einschränkungen
@@ -36,14 +37,22 @@ Zwei Dinge, die an der Symcon-App liegen, nicht am Modul:
 
 Wer eine echte "Livebild, bevor man reagiert"-Erfahrung will (wie früher bei DoorIP per
 SIP-Early-Media), erreicht das über ein **fest montiertes Wandpanel mit der neuen Kachel
-Visualisierung**: Mit dem Haken *Bei Klingeln automatisch öffnen* unten zeigt das Panel
-beim Klingeln automatisch das Kamerabild — ganz ohne SIP, ohne Antippen, ohne manuelle
-Reiter-Suche. Das Popup zeigt bewusst nur das Livebild; zum Öffnen der Tür muss es erst
-geschlossen und dann der Schalter *Tür öffnen* in der normalen Ansicht bedient werden.
-Über *Livebild-Popup automatisch schließen nach* (Standard 60 Sekunden, 0 = nie) schließt
-sich das Popup auch ohne Antippen von selbst wieder. Da Symcon keine Close-Funktion
-bietet, geschieht das über `VISU_Reload()` — die Visualisierung wird auf allen
-verbundenen Geräten neu geladen.
+Visualisierung**: Mit *Bei Klingeln automatisch öffnen* zeigt das Panel beim Klingeln
+automatisch das Kamerabild — ganz ohne SIP, Antippen oder manuelle Reitersuche.
+
+Ab Symcon 9.1 kann zusätzlich *Interaktives Popup mit Türöffnen-Schaltfläche verwenden*
+aktiviert werden. Die Option ist standardmäßig ausgeschaltet und muss in den
+Instanzeinstellungen bewusst aktiviert werden. Dann öffnet das Klingelereignis die
+HTML-SDK-Vollbildansicht der Modulinstanz mit dem aktuellen Kamerabild, einer direkten
+*Tür öffnen*-Schaltfläche und einer Zurücknavigation zur Kategorie der Instanz. Die
+Ansicht ist bisher nicht auf einem Wandpanel verifiziert. Bei aktivierter Option verwendet
+die Modulinstanz auch außerhalb des Popups diesen Visualisierungstyp; die normale
+Instanzkachel kann daher anders aussehen. Der automatische Timeout sendet eine Navigation
+an die verbundenen Ansichten dieser Visualisierung. Unter Symcon 8.2 bis 9.0 wird die
+Option ausgeblendet und das bisherige Medien-Popup verwendet; dort schließt der Timeout
+weiterhin über `VISU_Reload()`, das alle verbundenen Geräte neu lädt.
+`VISU_OpenObject()` öffnet die Ansicht auf allen verbundenen Geräten der gewählten
+Visualisierung.
 
 ### Gegensprechen
 
@@ -184,11 +193,12 @@ prüfen, ob überhaupt eine **WebHook-Control**-Instanz in Symcon existiert (Pfl
 siehe Meldungen-Log — ohne die schlägt die Registrierung lautlos fehl).
 
 Optional, nur bei einem fest montierten Wandpanel mit der neuen Kachel Visualisierung:
-Unter *Bei Klingeln automatisch öffnen* den Haken setzen. Das Kamera-Medienobjekt aus
-*Kamera-Medienobjekt für Push-Ziel* (oder ohne Auswahl der eigene Türkamera-Snapshot)
-öffnet sich dann beim Klingeln automatisch als Vollbild-Kachel auf allen offenen Geräten
-dieser Visualisierung — kein Reiter-Suchen im Editor nötig. Braucht Symcon ≥ 8.2; bei
-der alten WebFront Visualisierung ohne Wirkung.
+Unter *Bei Klingeln automatisch öffnen* den Haken setzen. Ab Symcon 9.1 kann zusätzlich
+*Interaktives Popup mit Türöffnen-Schaltfläche verwenden* aktiviert werden (standardmäßig
+aus). Dann öffnet sich die eigene Türkamera-Ansicht mit der Entriegelungs-Schaltfläche.
+Bei deaktivierter Option oder Symcon 8.2 bis 9.0 öffnet sich stattdessen das unter *Kamera-Medienobjekt für Push-Ziel*
+gewählte Medienobjekt (oder ohne Auswahl der eigene Snapshot) als Vollbild-Kachel. Die
+Funktion benötigt mindestens Symcon 8.2 und wirkt nicht in der alten WebFront Visualisierung.
 
 ### 5. Protect-API-Key einrichten (für Gegensprechen und/oder Kamerabild)
 

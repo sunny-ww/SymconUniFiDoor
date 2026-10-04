@@ -10,6 +10,7 @@ class UniFiDoor extends IPSModule
 {
     private const WEBHOOK_PREFIX = '/hook/unifidoor';
     private const TILE_VISUALIZATION_MODULE_ID = '{B5B875BB-9B76-45FD-4E67-2607E45B3AC4}';
+    private const INTERACTIVE_POPUP_MIN_VERSION = '9.1';
 
     public function Create()
     {
@@ -33,6 +34,9 @@ class UniFiDoor extends IPSModule
         $this->RegisterPropertyInteger('NotifyTargetID', 0);
         $this->RegisterPropertyInteger('VisuInstanceID', 0);
         $this->RegisterPropertyBoolean('AutoOpenOnRing', false);
+        // Unter 8.2 wird diese Option ausgeblendet und ignoriert. Die
+        // interaktive Vollbildkachel bleibt zunächst eine bewusste Opt-in-Option.
+        $this->RegisterPropertyBoolean('InteractivePopup', false);
         $this->RegisterPropertyInteger('LiveImagePopupTimeoutSeconds', 60);
 
         // --- Gegensprechen (offizielle Protect Integration API) ---
@@ -70,6 +74,8 @@ class UniFiDoor extends IPSModule
     {
         parent::ApplyChanges();
 
+        $this->ConfigureVisualizationType();
+
         $this->RegisterHook(self::WEBHOOK_PREFIX . '/' . $this->InstanceID);
         $this->RegisterMediaSnapshot();
         $this->RegisterMediaStream();
@@ -78,6 +84,92 @@ class UniFiDoor extends IPSModule
         $this->SetTimerInterval('RefreshLiveImage', $liveInterval > 0 ? $liveInterval * 1000 : 0);
 
         $this->SetStatus($this->DetermineConfigStatus());
+    }
+
+    private function IsInteractivePopupSupported(): bool
+    {
+        $version = IPS_GetKernelVersion();
+        if (!preg_match('/^(\d+)\.(\d+)/', $version, $matches)) {
+            return false;
+        }
+
+        return version_compare(
+            $matches[1] . '.' . $matches[2],
+            self::INTERACTIVE_POPUP_MIN_VERSION,
+            '>='
+        );
+    }
+
+    private function IsInteractivePopupEnabled(): bool
+    {
+        return $this->IsInteractivePopupSupported()
+            && $this->ReadPropertyBoolean('InteractivePopup');
+    }
+
+    private function ConfigureVisualizationType(): void
+    {
+        if ($this->IsInteractivePopupEnabled()) {
+            // Typ 2 entspricht INSTANCE_VISUALIZATION_TYPE_HTML_FULLSCREEN.
+            // Die Konstante selbst wird im älteren Laufzeitpfad nicht benötigt.
+            $this->SetVisualizationType(2);
+            return;
+        }
+
+        $this->SetVisualizationType(0);
+    }
+
+    public function GetVisualizationTile(): string
+    {
+        if (!$this->IsInteractivePopupEnabled()) {
+            return '';
+        }
+
+        $snapshotID = @$this->GetIDForIdent('Snapshot');
+        $imageData = $snapshotID !== false ? IPS_GetMediaContent($snapshotID) : '';
+        $image = $imageData !== ''
+            ? '<img class="snapshot" src="' . $this->BuildImageDataUri($imageData) . '" alt="Türkamera">'
+            : '<div class="no-image">Noch kein Kamerabild verfügbar</div>';
+
+        $parentID = IPS_GetParent($this->InstanceID);
+        $backButton = $parentID > 0
+            ? '<button class="secondary" onclick="openObject(' . $parentID . ')">Zurück</button>'
+            : '';
+
+        return '<style>
+html,body{margin:0;width:100%;height:100%;font-family:system-ui,sans-serif;background:#111;color:#fff}
+.page{box-sizing:border-box;min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:20px}
+.snapshot{display:block;max-width:100%;max-height:72vh;object-fit:contain;border-radius:8px}
+.no-image{height:45vh;display:grid;place-items:center;color:#bbb}
+.controls{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+button{font:inherit;font-size:1.1rem;padding:14px 24px;border:0;border-radius:8px;cursor:pointer}
+.unlock{background:#c62828;color:#fff}.secondary{background:#444;color:#fff}
+#status{min-height:1.4em;color:#ddd;text-align:center}
+</style>
+<main class="page">' . $image . '
+<div class="controls">
+<button class="unlock" onclick="unlockDoor()">Tür öffnen</button>' . $backButton . '
+</div>
+<div id="status" role="status" aria-live="polite"></div>
+</main>
+<script>
+function unlockDoor(){document.getElementById("status").textContent="Entriegelung wird angefragt…";requestAction("Unlock",true);}
+function handleMessage(message){if(!message){return;}if(message.action==="close"&&message.target>0){openObject(message.target);}if(message.action==="unlock-result"){document.getElementById("status").textContent=message.success?"Türöffnungsbefehl erfolgreich gesendet":"Tür konnte nicht geöffnet werden — Meldungen-Log prüfen";}}
+</script>
+';
+    }
+
+    private function BuildImageDataUri(string $base64Data): string
+    {
+        $mimeType = 'image/jpeg';
+        if (strncmp($base64Data, 'iVBORw0KGgo', 11) === 0) {
+            $mimeType = 'image/png';
+        } elseif (strncmp($base64Data, 'R0lGOD', 6) === 0) {
+            $mimeType = 'image/gif';
+        } elseif (strncmp($base64Data, 'UklGR', 5) === 0) {
+            $mimeType = 'image/webp';
+        }
+
+        return 'data:' . $mimeType . ';base64,' . trim($base64Data);
     }
 
     /**
@@ -146,8 +238,19 @@ class UniFiDoor extends IPSModule
             if (!isset($panel['items'])) {
                 continue;
             }
-            foreach ($panel['items'] as &$item) {
+            foreach ($panel['items'] as $itemIndex => &$item) {
                 $name = $item['name'] ?? '';
+                if ($name === 'InteractivePopup') {
+                    if (!$this->IsInteractivePopupSupported()) {
+                        unset($panel['items'][$itemIndex]);
+                        continue;
+                    }
+                }
+                if ($name === 'InteractivePopupInfo') {
+                    $item['caption'] = $this->IsInteractivePopupSupported()
+                        ? 'Ab Symcon 9.1 öffnet das Klingel-Popup die interaktive Vollbildansicht mit Türöffnen-Schaltfläche. Das Bild wird beim Klingeln aktualisiert.'
+                        : 'Die interaktive Vollbildansicht mit Türöffnen-Schaltfläche erfordert Symcon 9.1 oder neuer. Unter dieser Version bleibt das Kamera-Popup unverändert.';
+                }
                 if ($name === 'DoorID' && $door !== null) {
                     $item['options'] = $door['options'];
                 }
@@ -162,6 +265,7 @@ class UniFiDoor extends IPSModule
                 }
             }
             unset($item);
+            $panel['items'] = array_values($panel['items']);
         }
         unset($panel);
 
@@ -233,10 +337,19 @@ class UniFiDoor extends IPSModule
             case 'Unlock':
                 // Nur beim Einschalten entriegeln — ein aktives Zurücksetzen
                 // auf false (z. B. durch eine Visualisierung) darf nichts auslösen.
-                if ($Value && $this->Unlock()) {
-                    $this->SetValue('Unlock', true);
-                    $this->SetTimerInterval('ResetUnlock', 5000);
-                } elseif (!$Value) {
+                if ($Value) {
+                    $success = $this->Unlock();
+                    $this->SetValue('Unlock', $success);
+                    if ($success) {
+                        $this->SetTimerInterval('ResetUnlock', 5000);
+                    }
+                    if ($this->IsInteractivePopupEnabled()) {
+                        $this->UpdateVisualizationValue([
+                            'action'  => 'unlock-result',
+                            'success' => $success,
+                        ]);
+                    }
+                } else {
                     $this->SetValue('Unlock', false);
                     $this->SetTimerInterval('ResetUnlock', 0);
                 }
@@ -452,11 +565,14 @@ class UniFiDoor extends IPSModule
             // bewusst nicht mehr unterstützt.
             @VISU_PostNotification($visu, 'Es klingelt', IPS_GetName($this->InstanceID), 'Alarm', $targetID);
 
-            // Für ein fest montiertes Wandpanel (Kiosk-Modus): öffnet das
-            // Zielobjekt live auf allen offenen Geräten dieser Visualisierung
-            // — als Vollbild-Kachel, ganz ohne Antippen.
+            // Für ein fest montiertes Wandpanel (Kiosk-Modus): öffnet auf
+            // Symcon 9.1+ die interaktive Vollbildkachel, andernfalls wie
+            // bisher das gewählte Kamera-Medienobjekt.
             if ($this->ReadPropertyBoolean('AutoOpenOnRing')) {
-                @VISU_OpenObject($visu, $targetID, '');
+                $openTargetID = $this->IsInteractivePopupEnabled()
+                    ? $this->InstanceID
+                    : $targetID;
+                @VISU_OpenObject($visu, $openTargetID, '');
 
                 $timeout = $this->ReadPropertyInteger('LiveImagePopupTimeoutSeconds');
                 $this->SetTimerInterval('CloseLiveImagePopup', $timeout > 0 ? $timeout * 1000 : 0);
@@ -472,10 +588,10 @@ class UniFiDoor extends IPSModule
      * LiveImagePopupTimeoutSeconds einstellbar (0 = nie automatisch
      * schließen, nur manuell per Antippen).
      *
-     * Es gibt keine VISU_CloseObject()-Funktion (live geprüft). Verifiziert am
-     * Wandpanel: VISU_Reload() lädt die Kachel Visualisierung neu und bringt
-     * damit alle Clients zurück zur Standardansicht. Nebenwirkung: das gilt
-     * für alle gerade verbundenen Geräte dieser Visualisierung.
+     * Im interaktiven HTML-SDK-Popup wird eine Nachricht an die Darstellung
+     * gesendet, die lokal zur Elternkategorie navigiert. Beim bisherigen
+     * Medien-Popup bleibt VISU_Reload() der Fallback und lädt die Visualisierung
+     * auf allen verbundenen Geräten neu.
      */
     public function CloseLiveImagePopup(): void
     {
@@ -484,6 +600,16 @@ class UniFiDoor extends IPSModule
         $visu = $this->ReadPropertyInteger('VisuInstanceID');
         if ($visu <= 0 || !IPS_InstanceExists($visu)) {
             return;
+        }
+
+        if ($this->IsInteractivePopupEnabled()) {
+            $parentID = IPS_GetParent($this->InstanceID);
+            if ($parentID > 0 && $this->UpdateVisualizationValue([
+                'action' => 'close',
+                'target' => $parentID,
+            ])) {
+                return;
+            }
         }
 
         @VISU_Reload($visu);
