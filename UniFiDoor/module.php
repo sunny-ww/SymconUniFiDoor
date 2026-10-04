@@ -39,6 +39,9 @@ class UniFiDoor extends IPSModule
         $this->RegisterPropertyString('CameraID', '');
         $this->RegisterPropertyString('TalkbackTestFile', '');
 
+        // --- Interner Zustand ---
+        $this->RegisterAttributeString('LastRingEventID', '');
+
         // --- Variablen ---
         $this->RegisterVariableBoolean('Ring', 'Es klingelt', '~Alert', 10);
         $this->RegisterVariableInteger('LastRing', 'Letztes Klingeln', '~UnixTimestamp', 20);
@@ -194,9 +197,14 @@ class UniFiDoor extends IPSModule
     {
         switch ($Ident) {
             case 'Unlock':
-                if ($this->Unlock()) {
+                // Nur beim Einschalten entriegeln — ein aktives Zurücksetzen
+                // auf false (z. B. durch eine Visualisierung) darf nichts auslösen.
+                if ($Value && $this->Unlock()) {
                     $this->SetValue('Unlock', true);
                     $this->SetTimerInterval('ResetUnlock', 5000);
+                } elseif (!$Value) {
+                    $this->SetValue('Unlock', false);
+                    $this->SetTimerInterval('ResetUnlock', 0);
                 }
                 break;
             default:
@@ -352,18 +360,28 @@ class UniFiDoor extends IPSModule
         // Ein Alarm kann mehrere Trigger enthalten — wir reagieren nur, wenn
         // einer davon den Key "ring" trägt.
         $isRing = false;
+        $eventID = '';
         $triggers = $payload['alarm']['triggers'] ?? [];
         if (is_array($triggers)) {
             foreach ($triggers as $trigger) {
                 if (($trigger['key'] ?? '') === 'ring') {
                     $isRing = true;
+                    $eventID = (string) ($trigger['eventId'] ?? '');
                     break;
                 }
             }
         }
 
         if ($isRing) {
-            $this->HandleRing();
+            // Wiederholte Zustellung desselben Ereignisses nicht erneut
+            // verarbeiten (sonst doppelte Push-Meldungen und Popups). Fehlt
+            // die eventId im Payload, wird wie bisher jedes Ereignis verarbeitet.
+            if ($eventID !== '' && $eventID === $this->ReadAttributeString('LastRingEventID')) {
+                $this->SendDebug('Ring', "Ereignis {$eventID} bereits verarbeitet — ignoriert", 0);
+            } else {
+                $this->WriteAttributeString('LastRingEventID', $eventID);
+                $this->HandleRing();
+            }
         }
 
         http_response_code(200);
@@ -386,9 +404,10 @@ class UniFiDoor extends IPSModule
         if ($visu > 0 && IPS_InstanceExists($visu)) {
             $targetID = $this->DetermineRingTargetID();
 
-            // Ausschließlich die neue Kachel Visualisierung (Symcon >= 7.0
-            // für Push, >= 8.2 für automatisches Öffnen). Die alte WebFront
-            // Visualisierung (WFC_*) wird bewusst nicht mehr unterstützt.
+            // Ausschließlich die neue Kachel Visualisierung; das Modul setzt
+            // Symcon >= 8.2 voraus (VISU_OpenObject; VISU_PostNotification gäbe
+            // es schon ab 7.0). Die alte WebFront Visualisierung (WFC_*) wird
+            // bewusst nicht mehr unterstützt.
             @VISU_PostNotification($visu, 'Es klingelt', IPS_GetName($this->InstanceID), 'Alarm', $targetID);
 
             // Für ein fest montiertes Wandpanel (Kiosk-Modus): öffnet das
@@ -720,8 +739,18 @@ class UniFiDoor extends IPSModule
             return false;
         }
 
+        // Leerer Body bei Erfolg (z. B. manche PUT-Aufrufe) ist in Ordnung,
+        // nicht-leerer Body ohne gültiges JSON dagegen ein Fehler — sonst
+        // sähe er in Listenfunktionen wie „keine Einträge gefunden" aus.
+        if (trim((string) $response) === '') {
+            return [];
+        }
         $decoded = json_decode((string) $response, true);
-        return is_array($decoded) ? $decoded : [];
+        if (!is_array($decoded)) {
+            $this->LogMessage("{$label}: Antwort von {$path} ist kein gültiges JSON", KL_ERROR);
+            return false;
+        }
+        return $decoded;
     }
 
     // =====================================================================
