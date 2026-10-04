@@ -989,11 +989,14 @@ class UniFiDoor extends IPSModule
         $samplingRate = (int) ($session['samplingRate'] ?? 0);
 
         if ($url === '' || $codec !== 'opus' || $samplingRate <= 0) {
-            $this->LogMessage('Talkback-Session lieferte unerwartetes Format: ' . json_encode($session), KL_ERROR);
+            $this->LogMessage('Talkback-Session lieferte unerwartetes Format (Codec: ' . ($codec !== '' ? $codec : '?') . ', Samplingrate: ' . $samplingRate . ', URL ' . ($url !== '' ? 'vorhanden' : 'fehlt') . ')', KL_ERROR);
             return false;
         }
 
-        $this->SendDebug('Talkback', "Session erhalten: {$url} ({$codec}, {$samplingRate} Hz)", 0);
+        // Die Session-URL kann temporäre Zugangsdaten enthalten — nur Ziel-
+        // Host und Port ins Debug-Log, nie die komplette URL.
+        $target = (parse_url($url, PHP_URL_HOST) ?: '?') . ':' . (parse_url($url, PHP_URL_PORT) ?: '?');
+        $this->SendDebug('Talkback', "Session erhalten: {$target} ({$codec}, {$samplingRate} Hz)", 0);
 
         $file = $this->ReadPropertyString('TalkbackTestFile');
         $input = ($file !== '' && is_readable($file))
@@ -1007,13 +1010,13 @@ class UniFiDoor extends IPSModule
             escapeshellarg($url)
         );
 
-        $this->SendDebug('Talkback', "Starte: {$command}", 0);
+        $this->SendDebug('Talkback', 'Starte ffmpeg (Opus, ' . $samplingRate . ' Hz) → ' . $target, 0);
         exec($command, $output, $exitCode);
 
         if ($exitCode !== 0) {
             $this->LogMessage(
                 'ffmpeg-Übertragung fehlgeschlagen (ist ffmpeg auf dem Symcon-Host installiert?): '
-                . implode(' | ', array_slice($output, -5)),
+                . str_replace($url, '<Session-URL>', implode(' | ', array_slice($output, -5))),
                 KL_ERROR
             );
             return false;
