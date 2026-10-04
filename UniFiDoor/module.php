@@ -9,6 +9,7 @@ declare(strict_types=1);
 class UniFiDoor extends IPSModule
 {
     private const WEBHOOK_PREFIX = '/hook/unifidoor';
+    private const TILE_VISUALIZATION_MODULE_ID = '{B5B875BB-9B76-45FD-4E67-2607E45B3AC4}';
 
     public function Create()
     {
@@ -40,7 +41,7 @@ class UniFiDoor extends IPSModule
         $this->RegisterPropertyString('TalkbackTestFile', '');
 
         // --- Interner Zustand ---
-        $this->RegisterAttributeString('LastRingEventID', '');
+        $this->RegisterAttributeString('RecentRingEventIDs', '[]');
 
         // --- Variablen ---
         $this->RegisterVariableBoolean('Ring', 'Es klingelt', '~Alert', 10);
@@ -76,12 +77,45 @@ class UniFiDoor extends IPSModule
         $liveInterval = $this->ReadPropertyInteger('LiveImageIntervalSeconds');
         $this->SetTimerInterval('RefreshLiveImage', $liveInterval > 0 ? $liveInterval * 1000 : 0);
 
+        $this->SetStatus($this->DetermineConfigStatus());
+    }
+
+    /**
+     * Prüft die Konfiguration (ohne Netzwerkzugriff) und liefert den passenden
+     * Instanzstatus. Die Captions stehen im "status"-Block der form.json.
+     */
+    private function DetermineConfigStatus(): int
+    {
         if ($this->ReadPropertyString('Host') === '' || $this->ReadPropertyString('AccessToken') === '') {
-            $this->SetStatus(104); // Instanz inaktiv – Konfiguration unvollständig
-            return;
+            return 104; // Konfiguration unvollständig
         }
 
-        $this->SetStatus(102);
+        $port = $this->ReadPropertyInteger('AccessPort');
+        if ($port < 1 || $port > 65535) {
+            return 201;
+        }
+
+        if ($this->ReadPropertyString('DoorID') === '') {
+            return 202;
+        }
+
+        if ($this->ReadPropertyString('CameraID') !== '' && $this->ReadPropertyString('ProtectApiKey') === '') {
+            return 203;
+        }
+
+        $visu = $this->ReadPropertyInteger('VisuInstanceID');
+        if ($visu > 0) {
+            if (!IPS_InstanceExists($visu) || IPS_GetInstance($visu)['ModuleInfo']['ModuleID'] !== self::TILE_VISUALIZATION_MODULE_ID) {
+                return 204;
+            }
+        }
+
+        $target = $this->ReadPropertyInteger('NotifyTargetID');
+        if ($target > 0 && !IPS_MediaExists($target)) {
+            return 205;
+        }
+
+        return 102;
     }
 
     /**
@@ -376,10 +410,18 @@ class UniFiDoor extends IPSModule
             // Wiederholte Zustellung desselben Ereignisses nicht erneut
             // verarbeiten (sonst doppelte Push-Meldungen und Popups). Fehlt
             // die eventId im Payload, wird wie bisher jedes Ereignis verarbeitet.
-            if ($eventID !== '' && $eventID === $this->ReadAttributeString('LastRingEventID')) {
+            $recent = json_decode($this->ReadAttributeString('RecentRingEventIDs'), true);
+            if (!is_array($recent)) {
+                $recent = [];
+            }
+
+            if ($eventID !== '' && in_array($eventID, $recent, true)) {
                 $this->SendDebug('Ring', "Ereignis {$eventID} bereits verarbeitet — ignoriert", 0);
             } else {
-                $this->WriteAttributeString('LastRingEventID', $eventID);
+                if ($eventID !== '') {
+                    $recent[] = $eventID;
+                    $this->WriteAttributeString('RecentRingEventIDs', json_encode(array_slice($recent, -20)));
+                }
                 $this->HandleRing();
             }
         }
@@ -465,7 +507,10 @@ class UniFiDoor extends IPSModule
     {
         $target = $this->ReadPropertyInteger('NotifyTargetID');
         if ($target > 0) {
-            return $target;
+            if (IPS_ObjectExists($target)) {
+                return $target;
+            }
+            $this->LogMessage("Push-Ziel {$target} existiert nicht mehr — es wird der eigene Snapshot verwendet", KL_WARNING);
         }
 
         $snapshotID = @$this->GetIDForIdent('Snapshot');
