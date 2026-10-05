@@ -153,7 +153,7 @@ button{font:inherit;font-size:1.1rem;padding:14px 24px;border:0;border-radius:8p
 </main>
 <script>
 function unlockDoor(){document.getElementById("status").textContent="Entriegelung wird angefragt…";requestAction("Unlock",true);}
-function handleMessage(message){if(!message){return;}if(message.action==="close"&&message.target>0){openObject(message.target);}if(message.action==="unlock-result"){document.getElementById("status").textContent=message.success?"Türöffnungsbefehl erfolgreich gesendet":"Tür konnte nicht geöffnet werden — Meldungen-Log prüfen";}}
+function handleMessage(message){if(typeof message==="string"){try{message=JSON.parse(message);}catch(e){return;}}if(!message){return;}if(message.action==="close"&&message.target>0){openObject(message.target);}if(message.action==="unlock-result"){document.getElementById("status").textContent=message.success?"Türöffnungsbefehl erfolgreich gesendet":"Tür konnte nicht geöffnet werden — Meldungen-Log prüfen";}}
 </script>
 ';
     }
@@ -344,10 +344,11 @@ function handleMessage(message){if(!message){return;}if(message.action==="close"
                         $this->SetTimerInterval('ResetUnlock', 5000);
                     }
                     if ($this->IsInteractivePopupEnabled()) {
-                        $this->UpdateVisualizationValue([
+                        // Nur Strings werden akzeptiert (Arrays: "Type is not supported").
+                        $this->UpdateVisualizationValue(json_encode([
                             'action'  => 'unlock-result',
                             'success' => $success,
-                        ]);
+                        ]));
                     }
                 } else {
                     $this->SetValue('Unlock', false);
@@ -604,10 +605,10 @@ function handleMessage(message){if(!message){return;}if(message.action==="close"
 
         if ($this->IsInteractivePopupEnabled()) {
             $parentID = IPS_GetParent($this->InstanceID);
-            if ($parentID > 0 && $this->UpdateVisualizationValue([
+            if ($parentID > 0 && $this->UpdateVisualizationValue(json_encode([
                 'action' => 'close',
                 'target' => $parentID,
-            ])) {
+            ]))) {
                 return;
             }
         }
